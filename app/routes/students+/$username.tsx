@@ -6,6 +6,7 @@ import { Spacer } from '#app/components/spacer.tsx'
 import { Button } from '#app/components/ui/button.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { getStudentImgSrc } from '#app/utils/misc.tsx'
+import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const student = await prisma.student.findFirst({
@@ -16,6 +17,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 			username: true,
 			createdAt: true,
 			image: { select: { id: true } },
+			teachers: { select: { id: true } },
 		},
 		where: {
 			username: params.username,
@@ -34,6 +36,10 @@ export default function ProfileRoute() {
 	const data = useLoaderData<typeof loader>()
 	const student = data.student
 	const studentDisplayName = student.name ?? student.username
+	const loggedInUser = useOptionalUser()
+	const isTeacherOfStudent = data.student.teachers.find(
+		t => t.id === loggedInUser?.id,
+	)
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center">
@@ -67,11 +73,13 @@ export default function ProfileRoute() {
 								My notes
 							</Link>
 						</Button>
-						<Button asChild>
-							<Link to="/settings/profile" prefetch="intent">
-								Edit profile
-							</Link>
-						</Button>
+						{isTeacherOfStudent ? (
+							<Button asChild>
+								<Link to="/settings/profile" prefetch="intent">
+									Edit profile
+								</Link>
+							</Button>
+						) : null}
 					</div>
 				</div>
 			</div>

@@ -24,6 +24,7 @@ model User {
   roles       Role[]
   sessions    Session[]
   connections Connection[]
+  students Student[]
 }
 
 model Song {
@@ -51,6 +52,7 @@ model Student {
   updatedAt DateTime @updatedAt
 
   image StudentImage?
+  teachers User[]
 }
 
 model Note {

@@ -49,7 +49,7 @@ async function seed() {
 	})
 	await prisma.role.create({
 		data: {
-			name: 'user',
+			name: 'teacher',
 			permissions: {
 				connect: await prisma.permission.findMany({
 					select: { id: true },
@@ -73,7 +73,7 @@ async function seed() {
 					...userData,
 					password: { create: createPassword(userData.username) },
 					image: { create: userImages[index % userImages.length] },
-					roles: { connect: { name: 'user' } },
+					roles: { connect: { name: 'teacher' } },
 				},
 			})
 			.catch(e => {
@@ -164,7 +164,15 @@ async function seed() {
 			connections: {
 				create: { providerName: 'github', providerId: githubUser.profile.id },
 			},
-			roles: { connect: [{ name: 'admin' }, { name: 'user' }] },
+			roles: { connect: [{ name: 'admin' }, { name: 'teacher' }] },
+			students: {
+				create: {
+					username: 'romanmendez',
+					name: 'Roman Mendez',
+					dob: faker.date.birthdate({ min: 30, max: 45, mode: 'age' }),
+					instrument: 'drums',
+				},
+			},
 		},
 	})
 	console.timeEnd(`🐨 Created admin user "kody"`)
