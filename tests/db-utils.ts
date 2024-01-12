@@ -5,8 +5,8 @@ import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
 
 const uniqueUsernameEnforcer = new UniqueEnforcer()
-const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
-const ageGroupingArray = ['rookie', 'rock101', 'performance', 'adults']
+export const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
+export const ageGroupingArray = ['rookie', 'rock101', 'performance', 'adults']
 
 type InstrumentType = (typeof instrumentsArray)[number]
 type AgeGroupingType = (typeof ageGroupingArray)[number]
@@ -36,6 +36,19 @@ export function createUser() {
 	}
 }
 
+export function createSong() {
+	const keys = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
+	return {
+		title: faker.music.songName(),
+		artist: faker.word.words({ count: { min: 1, max: 3 } }),
+		description: faker.lorem.paragraph({ min: 1, max: 3 }),
+		key: `${keys[faker.number.int({ min: 0, max: keys.length - 1 })]}${
+			Math.random() < 0.5 ? 'm' : ''
+		}`,
+		bpm: faker.number.int({ min: 60, max: 200 }).toString(),
+	}
+}
 
 export function createStudent({
 	instrument,
@@ -43,24 +56,24 @@ export function createStudent({
 }: {
 	instrument?: InstrumentType
 	ageGrouping?: AgeGroupingType
-}) {
-	let dob
+} = {}) {
+	let dob = faker.date.birthdate({ min: 6, mode: 'age' })
 	if (ageGrouping) {
 		switch (ageGrouping) {
 			case 'rookie':
-				dob = faker.date.birthdate({ min: 6, max: 8 })
+				dob = faker.date.birthdate({ min: 6, max: 8, mode: 'age' })
 				break
 			case 'rock101':
-				dob = faker.date.birthdate({ min: 8, max: 12 })
+				dob = faker.date.birthdate({ min: 8, max: 12, mode: 'age' })
 				break
 			case 'performance':
-				dob = faker.date.birthdate({ min: 12, max: 18 })
+				dob = faker.date.birthdate({ min: 12, max: 18, mode: 'age' })
 				break
 			case 'adults':
-				dob = faker.date.birthdate({ min: 18 })
+				dob = faker.date.birthdate({ min: 18, mode: 'age' })
 				break
 			default:
-				dob = faker.date.birthdate({ min: 6 })
+				dob = faker.date.birthdate({ min: 6, mode: 'age' })
 		}
 	}
 	return {
@@ -143,6 +156,19 @@ export async function getUserImages() {
 	)
 
 	return userImages
+}
+
+let studentImages: Array<Awaited<ReturnType<typeof img>>> | undefined
+export async function getStudentImages() {
+	if (studentImages) return studentImages
+
+	studentImages = await Promise.all(
+		Array.from({ length: 20 }, (_, index) =>
+			img({ filepath: `./tests/fixtures/images/student/${index}.jpeg` }),
+		),
+	)
+
+	return studentImages
 }
 
 export async function img({

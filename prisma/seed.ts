@@ -2,10 +2,13 @@ import { faker } from '@faker-js/faker'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
 import {
+	ageGroupingArray,
 	cleanupDb,
 	createPassword,
 	createSong,
+	createStudent,
 	createUser,
+	getStudentImages,
 	getUserImages,
 	img,
 } from '#tests/db-utils.ts'
@@ -58,6 +61,7 @@ async function seed() {
 	console.timeEnd('👑 Created roles...')
 
 	const totalUsers = 5
+	console.time(`👤 Created ${totalUsers} users...`)
 	const userImages = await getUserImages()
 
 	for (let index = 0; index < totalUsers; index++) {
@@ -79,7 +83,28 @@ async function seed() {
 	}
 	console.timeEnd(`👤 Created ${totalUsers} users...`)
 
+	const totalStudents = 50
+	console.time(`🎓 Created ${totalStudents} students...`)
+	const studentImages = await getStudentImages()
+
+	for (let index = 0; index < totalStudents; index++) {
+		const ageGrouping =
+			ageGroupingArray[
+				faker.number.int({ min: 0, max: ageGroupingArray.length - 1 })
+			]
+		const studentData = createStudent({ ageGrouping })
+		await prisma.student.create({
+			select: { id: true },
+			data: {
+				...studentData,
+				image: { create: studentImages[index % studentImages.length] },
+			},
+		})
+	}
+	console.timeEnd(`🎓 Created ${totalStudents} students...`)
+
 	const totalSongs = 10
+	console.time(`🎵 Created ${totalSongs} songs...`)
 	for (let index = 0; index < totalSongs; index++) {
 		const songData = createSong()
 		await prisma.song.create({
@@ -89,6 +114,7 @@ async function seed() {
 			},
 		})
 	}
+	console.timeEnd(`🎵 Created ${totalSongs} songs...`)
 
 	console.time(`🐨 Created admin user "kody"`)
 
