@@ -5,6 +5,11 @@ import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
 
 const uniqueUsernameEnforcer = new UniqueEnforcer()
+const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
+const ageGroupingArray = ['rookie', 'rock101', 'performance', 'adults']
+
+type InstrumentType = (typeof instrumentsArray)[number]
+type AgeGroupingType = (typeof ageGroupingArray)[number]
 
 export function createUser() {
 	const firstName = faker.person.firstName()
@@ -28,6 +33,45 @@ export function createUser() {
 		username,
 		name: `${firstName} ${lastName}`,
 		email: `${username}@example.com`,
+	}
+}
+
+
+export function createStudent({
+	instrument,
+	ageGrouping,
+}: {
+	instrument?: InstrumentType
+	ageGrouping?: AgeGroupingType
+}) {
+	let dob
+	if (ageGrouping) {
+		switch (ageGrouping) {
+			case 'rookie':
+				dob = faker.date.birthdate({ min: 6, max: 8 })
+				break
+			case 'rock101':
+				dob = faker.date.birthdate({ min: 8, max: 12 })
+				break
+			case 'performance':
+				dob = faker.date.birthdate({ min: 12, max: 18 })
+				break
+			case 'adults':
+				dob = faker.date.birthdate({ min: 18 })
+				break
+			default:
+				dob = faker.date.birthdate({ min: 6 })
+		}
+	}
+	return {
+		name: faker.person.fullName(),
+		username: faker.internet.userName(),
+		dob,
+		instrument:
+			instrument ??
+			instrumentsArray[
+				faker.number.int({ min: 0, max: instrumentsArray.length - 1 })
+			],
 	}
 }
 

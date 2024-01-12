@@ -21,10 +21,23 @@ model User {
 
   image       UserImage?
   password    Password?
-  notes       Note[]
   roles       Role[]
   sessions    Session[]
   connections Connection[]
+}
+
+model Song {
+  id          String  @id @default(cuid())
+  title       String
+  artist      String
+  description String?
+  key         String?
+  bpm         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes Note[]
 }
 
 model Note {
@@ -35,15 +48,13 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  ownerId String
+  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  songId String
 
   images NoteImage[]
 
-  // non-unique foreign key
-  @@index([ownerId])
   // This helps our order by in the user search a LOT
-  @@index([ownerId, updatedAt])
+  @@index([updatedAt])
 }
 
 model NoteImage {
