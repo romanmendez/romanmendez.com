@@ -230,9 +230,6 @@ function App() {
 	const nonce = useNonce()
 	const user = useOptionalUser()
 	const theme = useTheme()
-	const matches = useMatches()
-	const isOnSearchPage = matches.find(m => m.id === 'routes/users+/index')
-	const searchBar = isOnSearchPage ? null : <SearchBar status="idle" />
 	useToast(data.toast)
 
 	return (
@@ -241,9 +238,32 @@ function App() {
 				<header className="container py-6">
 					<nav className="flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap md:gap-8">
 						<Logo />
-						<div className="ml-auto hidden max-w-sm flex-1 sm:block">
-							{searchBar}
-						</div>
+						<ul
+							className={
+								'flex w-full flex-wrap items-center justify-center gap-4 delay-200'
+							}
+						>
+							<li>
+								<Link
+									to={'/teachers'}
+									className="flex h-16 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
+								>
+									<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
+										Teachers
+									</span>
+								</Link>
+							</li>
+							<li>
+								<Link
+									to={'/students'}
+									className="flex h-16 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
+								>
+									<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
+										Students
+									</span>
+								</Link>
+							</li>
+						</ul>
 						<div className="flex items-center gap-10">
 							{user ? (
 								<UserDropdown />
@@ -253,7 +273,6 @@ function App() {
 								</Button>
 							)}
 						</div>
-						<div className="block w-full sm:hidden">{searchBar}</div>
 					</nav>
 				</header>
 

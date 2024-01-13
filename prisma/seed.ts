@@ -1,15 +1,13 @@
-import { faker } from '@faker-js/faker'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
 import {
-	ageGroupingArray,
 	cleanupDb,
+	createLesson,
 	createPassword,
 	createSong,
 	createStudent,
 	createUser,
 	getStudentImages,
-	getUserImages,
 	img,
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
@@ -60,48 +58,42 @@ async function seed() {
 	})
 	console.timeEnd('👑 Created roles...')
 
-	const totalUsers = 5
-	console.time(`👤 Created ${totalUsers} users...`)
-	const userImages = await getUserImages()
-
-	for (let index = 0; index < totalUsers; index++) {
-		const userData = createUser()
-		await prisma.user
-			.create({
-				select: { id: true },
-				data: {
-					...userData,
-					password: { create: createPassword(userData.username) },
-					image: { create: userImages[index % userImages.length] },
-					roles: { connect: { name: 'teacher' } },
-				},
-			})
-			.catch(e => {
-				console.error('Error creating a user:', e)
-				return null
-			})
-	}
-	console.timeEnd(`👤 Created ${totalUsers} users...`)
-
-	const totalStudents = 50
-	console.time(`🎓 Created ${totalStudents} students...`)
-	const studentImages = await getStudentImages()
-
-	for (let index = 0; index < totalStudents; index++) {
-		const ageGrouping =
-			ageGroupingArray[
-				faker.number.int({ min: 0, max: ageGroupingArray.length - 1 })
-			]
-		const studentData = createStudent({ ageGrouping })
-		await prisma.student.create({
-			select: { id: true },
+	const totalTeachers = 5
+	const teachers = []
+	console.time(`🎓 Created ${totalTeachers} private classes...`)
+	for (let index = 0; index < totalTeachers; index++) {
+		const teacher = createUser()
+		const createdTeacher = await prisma.user.create({
 			data: {
-				...studentData,
-				image: { create: studentImages[index % studentImages.length] },
+				...teacher,
+				roles: { connect: { name: 'teacher' } },
+			},
+		})
+		teachers.push(createdTeacher)
+	}
+	console.timeEnd(`🎓 Created ${totalTeachers} private classes...`)
+
+	const totalStudents = 20
+	const studentImages = await getStudentImages()
+	console.time(`🧑 Created ${totalStudents} students...`)
+	for (let index = 0; index < totalStudents; index++) {
+		const student = createStudent()
+		const image = studentImages[index % studentImages.length]
+		const teacher = teachers[index % teachers.length]
+		await prisma.student.create({
+			data: {
+				...student,
+				lessons: {
+					create: {
+						...createLesson(),
+						teacher: { connect: teacher },
+					},
+				},
+				image: { create: image },
 			},
 		})
 	}
-	console.timeEnd(`🎓 Created ${totalStudents} students...`)
+	console.timeEnd(`🧑 Created ${totalStudents} students...`)
 
 	const totalSongs = 10
 	console.time(`🎵 Created ${totalSongs} songs...`)
@@ -165,14 +157,6 @@ async function seed() {
 				create: { providerName: 'github', providerId: githubUser.profile.id },
 			},
 			roles: { connect: [{ name: 'admin' }, { name: 'teacher' }] },
-			students: {
-				create: {
-					username: 'romanmendez',
-					name: 'Roman Mendez',
-					dob: faker.date.birthdate({ min: 30, max: 45, mode: 'age' }),
-					instrument: 'drums',
-				},
-			},
 		},
 	})
 	console.timeEnd(`🐨 Created admin user "kody"`)

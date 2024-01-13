@@ -1,15 +1,21 @@
 import fs from 'node:fs'
 import { faker } from '@faker-js/faker'
-import { type PrismaClient } from '@prisma/client'
+import { Student, type PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
 
 const uniqueUsernameEnforcer = new UniqueEnforcer()
 export const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
-export const ageGroupingArray = ['rookie', 'rock101', 'performance', 'adults']
+export const ageGroupArray = ['rookie', 'rock101', 'performance', 'adults']
 
 type InstrumentType = (typeof instrumentsArray)[number]
-type AgeGroupingType = (typeof ageGroupingArray)[number]
+type AgeGroupType = (typeof ageGroupArray)[number]
+
+function randomInstrument() {
+	return instrumentsArray[
+		faker.number.int({ min: 0, max: instrumentsArray.length - 1 })
+	]
+}
 
 export function createUser() {
 	const firstName = faker.person.firstName()
@@ -51,15 +57,14 @@ export function createSong() {
 }
 
 export function createStudent({
-	instrument,
-	ageGrouping,
+	ageGroup,
 }: {
 	instrument?: InstrumentType
-	ageGrouping?: AgeGroupingType
+	ageGroup?: AgeGroupType
 } = {}) {
 	let dob = faker.date.birthdate({ min: 6, mode: 'age' })
-	if (ageGrouping) {
-		switch (ageGrouping) {
+	if (ageGroup) {
+		switch (ageGroup) {
 			case 'rookie':
 				dob = faker.date.birthdate({ min: 6, max: 8, mode: 'age' })
 				break
@@ -80,11 +85,22 @@ export function createStudent({
 		name: faker.person.fullName(),
 		username: faker.internet.userName(),
 		dob,
-		instrument:
-			instrument ??
-			instrumentsArray[
-				faker.number.int({ min: 0, max: instrumentsArray.length - 1 })
-			],
+	}
+}
+
+export function createLesson() {
+	const minutesArray = ['00', '15', '30', '45']
+	const day = faker.date.weekday({ abbreviated: true })
+	const hours = faker.number.int({ min: 15, max: 21 })
+	const minutes =
+		minutesArray[faker.number.int({ min: 0, max: minutesArray.length - 1 })]
+	const time = `${hours}:${minutes}`
+	const instrument = randomInstrument()
+
+	return {
+		instrument,
+		time,
+		day,
 	}
 }
 

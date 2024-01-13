@@ -19,12 +19,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image       UserImage?
-  password    Password?
+  image    UserImage?
+  password Password?
+
   roles       Role[]
   sessions    Session[]
   connections Connection[]
-  students Student[]
+  lessons     Lesson[]
 }
 
 model Song {
@@ -41,18 +42,33 @@ model Song {
   notes Note[]
 }
 
-model Student {
-  id         String   @id @default(cuid())
-  username   String   @unique
-  name       String?
-  dob        DateTime
+model Lesson {
+  id         String @id @default(cuid())
   instrument String
+  time       String
+  day        String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image StudentImage?
-  teachers User[]
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  studentId String
+
+  teacher   User   @relation(fields: [teacherId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  teacherId String
+}
+
+model Student {
+  id       String   @id @default(cuid())
+  username String   @unique
+  name     String?
+  dob      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image   StudentImage?
+  lessons Lesson[]
 }
 
 model Note {
@@ -110,8 +126,8 @@ model StudentImage {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  studentId String @unique
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  studentId String  @unique
 }
 
 model Password {

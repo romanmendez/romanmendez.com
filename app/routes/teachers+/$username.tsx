@@ -9,34 +9,47 @@ import { getStudentImgSrc, getUserImgSrc } from '#app/utils/misc.tsx'
 import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const user = await prisma.user.findFirst({
+	const teacher = await prisma.user.findFirst({
 		select: {
 			id: true,
 			name: true,
 			username: true,
 			createdAt: true,
 			image: { select: { id: true } },
-			students: { select: { name: true } },
+			lessons: {
+				select: {
+					id: true,
+					instrument: true,
+					student: {
+						select: {
+							name: true,
+							username: true,
+							image: { select: { id: true } },
+						},
+					},
+				},
+			},
 		},
 		where: {
 			username: params.username,
 		},
 	})
 
-	invariantResponse(user, 'Teacher not found', { status: 404 })
+	invariantResponse(teacher, 'Teacher not found', { status: 404 })
 
 	return json({
-		user,
-		userJoinedDisplay: user.createdAt.toLocaleDateString(),
+		teacher,
+		userJoinedDisplay: teacher.createdAt.toLocaleDateString(),
 	})
 }
 
 export default function TeacherProfileRoute() {
 	const data = useLoaderData<typeof loader>()
-	const teacher = data.user
+	const teacher = data.teacher
+	const lessons = data.teacher.lessons
 	const teacherDisplayName = teacher.name ?? teacher.username
 	const loggedInUser = useOptionalUser()
-	const isLoggedInUser = data.user.id === loggedInUser?.id
+	const isLoggedInUser = data.teacher.id === loggedInUser?.id
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center">
@@ -47,7 +60,7 @@ export default function TeacherProfileRoute() {
 					<div className="absolute -top-40">
 						<div className="relative">
 							<img
-								src={getUserImgSrc(data.user.image?.id)}
+								src={getUserImgSrc(teacher.image?.id)}
 								alt={teacherDisplayName}
 								className="h-52 w-52 rounded-full object-cover"
 							/>
@@ -79,13 +92,45 @@ export default function TeacherProfileRoute() {
 						) : null}
 					</div>
 				</div>
+				<main>
+					{lessons.length ? (
+						<ul
+							className={
+								'flex w-full flex-wrap items-center justify-center gap-4 delay-200'
+							}
+						>
+							{lessons.map(lesson => (
+								<li key={lesson.id}>
+									<Link
+										to={`/students/${lesson.student.username}`}
+										className="flex h-36 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
+									>
+										<img
+											alt={lesson.student.name ?? lesson.student.username}
+											src={getStudentImgSrc(lesson.student.image?.id)}
+											className="h-16 w-16 rounded-full"
+										/>
+										<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">
+											{lesson.student.name}
+										</span>
+										<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">
+											{lesson.instrument}
+										</span>
+									</Link>
+								</li>
+							))}
+						</ul>
+					) : (
+						<p>No classes found</p>
+					)}
+				</main>
 			</div>
 		</div>
 	)
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
-	const displayName = data?.user.name ?? params.username
+	const displayName = data?.teacher.name ?? params.username
 	return [
 		{ title: `${displayName} | Epic Notes` },
 		{

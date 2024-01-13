@@ -13,11 +13,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		select: {
 			id: true,
 			name: true,
-			instrument: true,
 			username: true,
 			createdAt: true,
 			image: { select: { id: true } },
-			teachers: { select: { id: true } },
+			lessons: { select: { id: true, teacher: { select: { name: true } } } },
 		},
 		where: {
 			username: params.username,
@@ -37,9 +36,7 @@ export default function ProfileRoute() {
 	const student = data.student
 	const studentDisplayName = student.name ?? student.username
 	const loggedInUser = useOptionalUser()
-	const isTeacherOfStudent = data.student.teachers.find(
-		t => t.id === loggedInUser?.id,
-	)
+	const isAdmin = loggedInUser?.roles.find(r => r.name === 'admin')
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center">
@@ -73,7 +70,7 @@ export default function ProfileRoute() {
 								My notes
 							</Link>
 						</Button>
-						{isTeacherOfStudent ? (
+						{isAdmin ? (
 							<Button asChild>
 								<Link to="/settings/profile" prefetch="intent">
 									Edit profile

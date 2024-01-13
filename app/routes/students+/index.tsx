@@ -6,58 +6,52 @@ import { ErrorList } from '#app/components/forms.tsx'
 import { SearchBar } from '#app/components/search-bar.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getStudentImgSrc, useDelayedIsPending } from '#app/utils/misc.tsx'
+import { invariantResponse } from '@epic-web/invariant'
 
-const StudentSearchResultSchema = z.object({
-	id: z.string(),
-	instrument: z.string(),
-	username: z.string(),
-	name: z.string().nullable(),
-	imageId: z.string().nullable(),
-})
-
-const StudentSearchResultsSchema = z.array(StudentSearchResultSchema)
+const CURRENT_ROUTE = '/students'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const searchTerm = new URL(request.url).searchParams.get('search')
 	if (searchTerm === '') {
-		return redirect('/students')
+		return redirect(CURRENT_ROUTE)
 	}
 
 	const like = `%${searchTerm ?? ''}%`
-	const rawStudents = await prisma.$queryRaw`
-		SELECT Student.id, Student.username, Student.instrument, Student.name, StudentImage.id AS imageId
-		FROM Student
-		LEFT JOIN StudentImage ON Student.id = StudentImage.studentId
-		WHERE Student.username LIKE ${like}
-		OR Student.name LIKE ${like}
-		LIMIT 50
-	`
+	const students = await prisma.student.findMany({
+		select: {
+			id: true,
+			name: true,
+			username: true,
+			image: { select: { id: true } },
+		},
+		where: {
+			OR: [{ username: { contains: like } }, { name: { contains: like } }],
+		},
+	})
 
-	const result = StudentSearchResultsSchema.safeParse(rawStudents)
-	if (!result.success) {
-		return json({ status: 'error', error: result.error.message } as const, {
-			status: 400,
-		})
-	}
-	return json({ status: 'idle', students: result.data } as const)
+	invariantResponse(students, 'No students found', { status: 404 })
+
+	return json({ status: 'idle', students } as const)
 }
 
 export default function StudentRoute() {
 	const data = useLoaderData<typeof loader>()
+	const formAction = CURRENT_ROUTE
 	const isPending = useDelayedIsPending({
 		formMethod: 'GET',
-		formAction: '/students',
+		formAction,
 	})
-
-	if (data.status === 'error') {
-		console.error(data.error)
-	}
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
 			<h1 className="text-h1">School of Rock Students</h1>
 			<div className="w-full max-w-[700px] ">
-				<SearchBar status={data.status} autoFocus autoSubmit />
+				<SearchBar
+					status={data.status}
+					formAction={formAction}
+					autoFocus
+					autoSubmit
+				/>
 			</div>
 			<main>
 				{data.status === 'idle' ? (
@@ -76,7 +70,7 @@ export default function StudentRoute() {
 									>
 										<img
 											alt={student.name ?? student.username}
-											src={getStudentImgSrc(student.imageId)}
+											src={getStudentImgSrc(student.image?.id)}
 											className="h-16 w-16 rounded-full"
 										/>
 										{student.name ? (
@@ -84,9 +78,6 @@ export default function StudentRoute() {
 												{student.name}
 											</span>
 										) : null}
-										<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
-											{student.instrument}
-										</span>
 									</Link>
 								</li>
 							))}
