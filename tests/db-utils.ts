@@ -89,18 +89,14 @@ export function createStudent({
 }
 
 export function createLesson() {
-	const minutesArray = ['00', '15', '30', '45']
-	const day = faker.date.weekday({ abbreviated: true })
-	const hours = faker.number.int({ min: 15, max: 21 })
-	const minutes =
-		minutesArray[faker.number.int({ min: 0, max: minutesArray.length - 1 })]
-	const time = `${hours}:${minutes}`
+	const newDate = new Date(2024, 1, 1, 15, 45, 0).toString()
+	const schedule = `${newDate.slice(0, 3)} ${newDate.slice(16, 21)}`
+
 	const instrument = randomInstrument()
 
 	return {
 		instrument,
-		time,
-		day,
+		schedule,
 	}
 }
 

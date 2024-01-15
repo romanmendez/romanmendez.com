@@ -13,13 +13,17 @@ import {
 import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const teacher = await prisma.user.findFirst({
+	const teacher = await prisma.teacher.findFirst({
 		select: {
-			id: true,
-			name: true,
-			username: true,
-			createdAt: true,
-			image: { select: { id: true } },
+			user: {
+				select: {
+					id: true,
+					name: true,
+					username: true,
+					createdAt: true,
+					image: { select: { id: true } },
+				},
+			},
 			lessons: {
 				select: {
 					id: true,
@@ -37,7 +41,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 			},
 		},
 		where: {
-			username: params.username,
+			user: { username: params.username },
 		},
 	})
 
@@ -45,7 +49,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 	return json({
 		teacher,
-		userJoinedDisplay: teacher.createdAt.toLocaleDateString(),
+		userJoinedDisplay: teacher.user.createdAt.toLocaleDateString(),
 	})
 }
 
@@ -53,9 +57,9 @@ export default function TeacherProfileRoute() {
 	const data = useLoaderData<typeof loader>()
 	const teacher = data.teacher
 	const lessons = data.teacher.lessons
-	const teacherDisplayName = teacher.name ?? teacher.username
+	const teacherDisplayName = teacher.user.name ?? teacher.user.username
 	const loggedInUser = useOptionalUser()
-	const isLoggedInUser = data.teacher.id === loggedInUser?.id
+	const isLoggedInUser = data.teacher.user.id === loggedInUser?.id
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center">
@@ -66,7 +70,7 @@ export default function TeacherProfileRoute() {
 					<div className="absolute -top-40">
 						<div className="relative">
 							<img
-								src={getUserImgSrc(teacher.image?.id)}
+								src={getUserImgSrc(teacher.user.image?.id)}
 								alt={teacherDisplayName}
 								className="h-52 w-52 rounded-full object-cover"
 							/>
@@ -151,7 +155,7 @@ export default function TeacherProfileRoute() {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
-	const displayName = data?.teacher.name ?? params.username
+	const displayName = data?.teacher.user.name ?? params.username
 	return [
 		{ title: `${displayName} | Epic Notes` },
 		{

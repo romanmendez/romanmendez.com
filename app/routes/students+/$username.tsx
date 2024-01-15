@@ -5,11 +5,7 @@ import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
 import { Button } from '#app/components/ui/button.tsx'
 import { prisma } from '#app/utils/db.server.ts'
-import {
-	getStudentAge,
-	getStudentImgSrc,
-	getUserImgSrc,
-} from '#app/utils/misc.tsx'
+import { getStudentAge, getStudentImgSrc } from '#app/utils/misc.tsx'
 import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -27,9 +23,9 @@ export async function loader({ params }: LoaderFunctionArgs) {
 					id: true,
 					instrument: true,
 					updatedAt: true,
-					teacher: { select: { name: true, image: { select: { id: true } } } },
-					day: true,
-					time: true,
+					teacher: { select: { user: { select: { name: true } } } },
+					schedule: true,
+					review: { select: { content: true } },
 				},
 			},
 		},
@@ -103,17 +99,12 @@ export default function StudentProfileRoute() {
 					{lessons.map(lesson => (
 						<li key={lesson.id} className="flex justify-between gap-x-6 py-5">
 							<div className="flex min-w-0 gap-x-4">
-								<img
-									className="h-12 w-12 flex-none rounded-full bg-gray-50"
-									src={getUserImgSrc(lesson.teacher.image?.id)}
-									alt=""
-								/>
 								<div className="min-w-0 flex-auto">
 									<p className="text-sm font-semibold leading-6 text-foreground">
-										{lesson.teacher.name}
+										{lesson.teacher.user.name}
 									</p>
 									<p className="mt-1 truncate text-xs leading-5 text-gray-500">
-										still not sure what to put here
+										{lesson.review?.content}
 									</p>
 								</div>
 							</div>

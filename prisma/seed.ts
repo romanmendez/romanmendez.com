@@ -11,6 +11,8 @@ import {
 	img,
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
+import { faker } from '@faker-js/faker'
+import { Teacher } from '@prisma/client'
 
 async function seed() {
 	console.log('🌱 Seeding...')
@@ -62,14 +64,20 @@ async function seed() {
 	const teachers = []
 	console.time(`🎓 Created ${totalTeachers} private classes...`)
 	for (let index = 0; index < totalTeachers; index++) {
-		const teacher = createUser()
-		const createdTeacher = await prisma.user.create({
+		const userData = createUser()
+		const user = await prisma.user.create({
+			select: { id: true, teacher: true },
 			data: {
-				...teacher,
+				...userData,
+				teacher: {
+					create: {
+						bio: faker.lorem.paragraph(4),
+					},
+				},
 				roles: { connect: { name: 'teacher' } },
 			},
 		})
-		teachers.push(createdTeacher)
+		teachers.push(user)
 	}
 	console.timeEnd(`🎓 Created ${totalTeachers} private classes...`)
 
@@ -86,7 +94,13 @@ async function seed() {
 				lessons: {
 					create: {
 						...createLesson(),
-						teacher: { connect: teacher },
+						teacherId: teacher.id,
+						review: {
+							create: {
+								content: faker.lorem.paragraph(1),
+								authorId: teacher.id,
+							},
+						},
 					},
 				},
 				image: { create: image },

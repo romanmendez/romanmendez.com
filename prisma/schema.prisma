@@ -25,7 +25,30 @@ model User {
   roles       Role[]
   sessions    Session[]
   connections Connection[]
-  lessons     Lesson[]
+  teacher     Teacher?
+}
+
+model Teacher {
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+
+  bio String?
+
+  lessons       Lesson[]
+  lessonReviews LessonReview[]
+}
+
+model Student {
+  id       String   @id @default(cuid())
+  username String   @unique
+  name     String?
+  dob      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image   StudentImage?
+  lessons Lesson[]
 }
 
 model Song {
@@ -38,71 +61,41 @@ model Song {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  notes Note[]
 }
 
 model Lesson {
   id         String @id @default(cuid())
   instrument String
-  time       String
-  day        String
+  schedule   String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   studentId String
-
-  teacher   User   @relation(fields: [teacherId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  teacher   Teacher @relation(fields: [teacherId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
   teacherId String
+
+  review   LessonReview?
+  reviewId String?
 }
 
-model Student {
-  id       String   @id @default(cuid())
-  username String   @unique
-  name     String?
-  dob      DateTime
-  slot     DateTime
+model LessonReview {
+  id       String  @id @default(cuid())
+  content  String
+  mentions String?
+
+  author   Teacher @relation(fields: [authorId], references: [userId])
+  authorId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image   StudentImage?
-  lessons Lesson[]
-}
-
-model Note {
-  id      String @id @default(cuid())
-  title   String
-  content String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  songId String
-
-  images NoteImage[]
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  lessonId String @unique
 
   // This helps our order by in the user search a LOT
   @@index([updatedAt])
-}
-
-model NoteImage {
-  id          String  @id @default(cuid())
-  altText     String?
-  contentType String
-  blob        Bytes
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  noteId String
-
-  // non-unique foreign key
-  @@index([noteId])
 }
 
 model UserImage {
