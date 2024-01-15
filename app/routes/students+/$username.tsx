@@ -5,7 +5,11 @@ import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
 import { Button } from '#app/components/ui/button.tsx'
 import { prisma } from '#app/utils/db.server.ts'
-import { getStudentImgSrc } from '#app/utils/misc.tsx'
+import {
+	getStudentAge,
+	getStudentImgSrc,
+	getUserImgSrc,
+} from '#app/utils/misc.tsx'
 import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -14,9 +18,20 @@ export async function loader({ params }: LoaderFunctionArgs) {
 			id: true,
 			name: true,
 			username: true,
+			dob: true,
 			createdAt: true,
+			updatedAt: true,
 			image: { select: { id: true } },
-			lessons: { select: { id: true, teacher: { select: { name: true } } } },
+			lessons: {
+				select: {
+					id: true,
+					instrument: true,
+					updatedAt: true,
+					teacher: { select: { name: true, image: { select: { id: true } } } },
+					day: true,
+					time: true,
+				},
+			},
 		},
 		where: {
 			username: params.username,
@@ -24,16 +39,21 @@ export async function loader({ params }: LoaderFunctionArgs) {
 	})
 
 	invariantResponse(student, 'User not found', { status: 404 })
+	const studentAge = getStudentAge(student.dob)
 
 	return json({
-		student,
+		student: {
+			...student,
+			age: studentAge,
+		},
 		userJoinedDisplay: student.createdAt.toLocaleDateString(),
 	})
 }
 
-export default function ProfileRoute() {
+export default function StudentProfileRoute() {
 	const data = useLoaderData<typeof loader>()
 	const student = data.student
+	const lessons = data.student.lessons
 	const studentDisplayName = student.name ?? student.username
 	const loggedInUser = useOptionalUser()
 	const isAdmin = loggedInUser?.roles.find(r => r.name === 'admin')
@@ -47,7 +67,7 @@ export default function ProfileRoute() {
 					<div className="absolute -top-40">
 						<div className="relative">
 							<img
-								src={getStudentImgSrc(data.student.image?.id)}
+								src={getStudentImgSrc(student.image?.id)}
 								alt={studentDisplayName}
 								className="h-52 w-52 rounded-full object-cover"
 							/>
@@ -79,6 +99,45 @@ export default function ProfileRoute() {
 						) : null}
 					</div>
 				</div>
+				<ul className="divide-y divide-gray-100">
+					{lessons.map(lesson => (
+						<li key={lesson.id} className="flex justify-between gap-x-6 py-5">
+							<div className="flex min-w-0 gap-x-4">
+								<img
+									className="h-12 w-12 flex-none rounded-full bg-gray-50"
+									src={getUserImgSrc(lesson.teacher.image?.id)}
+									alt=""
+								/>
+								<div className="min-w-0 flex-auto">
+									<p className="text-sm font-semibold leading-6 text-foreground">
+										{lesson.teacher.name}
+									</p>
+									<p className="mt-1 truncate text-xs leading-5 text-gray-500">
+										still not sure what to put here
+									</p>
+								</div>
+							</div>
+							<div className="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+								<p className="text-sm leading-6 text-foreground">
+									{lesson.instrument}
+								</p>
+								{lesson.updatedAt ? (
+									<p className="mt-1 text-xs leading-5 text-gray-500">
+										Last seen{' '}
+										<time dateTime={lesson.updatedAt}>{lesson.updatedAt}</time>
+									</p>
+								) : (
+									<div className="mt-1 flex items-center gap-x-1.5">
+										<div className="flex-none rounded-full bg-emerald-500/20 p-1">
+											<div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+										</div>
+										<p className="text-xs leading-5 text-gray-500">Online</p>
+									</div>
+								)}
+							</div>
+						</li>
+					))}
+				</ul>
 			</div>
 		</div>
 	)

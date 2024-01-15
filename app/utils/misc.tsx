@@ -31,6 +31,11 @@ export function getErrorMessage(error: unknown) {
 	return 'Unknown Error'
 }
 
+export function getStudentAge(dob: Date | string) {
+	const age = new Date(Date.now() - new Date(dob).getTime())
+	return Math.abs(age.getUTCFullYear() - 1970).toString()
+}
+
 function formatColors() {
 	const colors = []
 	for (const [key, color] of Object.entries(extendedTheme.colors)) {

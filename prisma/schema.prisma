@@ -63,6 +63,7 @@ model Student {
   username String   @unique
   name     String?
   dob      DateTime
+  slot     DateTime
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
