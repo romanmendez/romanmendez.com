@@ -14,21 +14,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}
 
 	const like = `%${searchTerm ?? ''}%`
-	const teachers = await prisma.user.findMany({
+	const teachers = await prisma.teacher.findMany({
 		select: {
 			id: true,
+			userId: true,
 			name: true,
-			username: true,
-			image: { select: { id: true } },
-			roles: { select: { name: true } },
+			instruments: true,
+			user: {
+				select: {
+					image: true,
+				},
+			},
 		},
 		where: {
-			AND: [
-				{
-					OR: [{ username: { contains: like } }, { name: { contains: like } }],
-				},
-				{ roles: { some: { name: 'teacher' } } },
-			],
+			name: { contains: like },
 		},
 	})
 
@@ -47,7 +46,7 @@ export default function TeachersRoute() {
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
-			<h1 className="text-h1">School of Rock Teachers</h1>
+			<h1 className="text-h1">Teachers</h1>
 			<div className="w-full max-w-[700px] ">
 				<SearchBar
 					status={data.status}
@@ -68,21 +67,19 @@ export default function TeachersRoute() {
 							{data.teachers.map(teacher => (
 								<li key={teacher.id}>
 									<Link
-										to={teacher.username}
+										to={teacher.id}
 										className="flex h-36 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
 									>
 										<img
-											alt={teacher.name ?? teacher.username}
-											src={getUserImgSrc(teacher.image?.id)}
+											alt={teacher.name}
+											src={getUserImgSrc(teacher.user?.image?.id)}
 											className="h-16 w-16 rounded-full"
 										/>
-										{teacher.name ? (
-											<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">
-												{teacher.name}
-											</span>
-										) : null}
-										<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
-											drums
+										<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">
+											{teacher.name}
+										</span>
+										<span className="w-full overflow-hidden whitespace-nowrap text-center text-body-sm text-muted-foreground">
+											{teacher.instruments}
 										</span>
 									</Link>
 								</li>

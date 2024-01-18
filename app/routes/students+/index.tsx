@@ -1,12 +1,11 @@
+import { invariantResponse } from '@epic-web/invariant'
 import { json, redirect, type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
-import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { ErrorList } from '#app/components/forms.tsx'
 import { SearchBar } from '#app/components/search-bar.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getStudentImgSrc, useDelayedIsPending } from '#app/utils/misc.tsx'
-import { invariantResponse } from '@epic-web/invariant'
 
 const CURRENT_ROUTE = '/students'
 
@@ -21,11 +20,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		select: {
 			id: true,
 			name: true,
-			username: true,
 			image: { select: { id: true } },
 		},
 		where: {
-			OR: [{ username: { contains: like } }, { name: { contains: like } }],
+			name: { contains: like },
 		},
 	})
 
@@ -65,11 +63,11 @@ export default function StudentRoute() {
 							{data.students.map(student => (
 								<li key={student.id}>
 									<Link
-										to={student.username}
+										to={student.id}
 										className="flex h-36 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
 									>
 										<img
-											alt={student.name ?? student.username}
+											alt={student.name}
 											src={getStudentImgSrc(student.image?.id)}
 											className="h-16 w-16 rounded-full"
 										/>

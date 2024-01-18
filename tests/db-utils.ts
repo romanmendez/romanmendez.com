@@ -11,10 +11,24 @@ export const ageGroupArray = ['rookie', 'rock101', 'performance', 'adults']
 type InstrumentType = (typeof instrumentsArray)[number]
 type AgeGroupType = (typeof ageGroupArray)[number]
 
-function randomInstrument() {
+export function randomInstrument() {
 	return instrumentsArray[
 		faker.number.int({ min: 0, max: instrumentsArray.length - 1 })
 	]
+}
+
+export function getLessonTimes() {
+	const minutes = Array.from({ length: 4 }, (_, i) =>
+		i * 15 === 0 ? '00' : (i * 15).toString(),
+	)
+	const hours = Array.from({ length: 22 - 15 }, (_, i) => i + 15)
+	const time = []
+	for (let x = 0; x < hours.length; x++) {
+		for (let y = 0; y < minutes.length; y++) {
+			time.push(`${hours[x]}:${minutes[y]}`)
+		}
+	}
+	return time
 }
 
 export function createUser() {
@@ -37,7 +51,6 @@ export function createUser() {
 		.replace(/[^a-z0-9_]/g, '_')
 	return {
 		username,
-		name: `${firstName} ${lastName}`,
 		email: `${username}@example.com`,
 	}
 }
@@ -58,11 +71,14 @@ export function createSong() {
 
 export function createStudent({
 	ageGroup,
+	instrument,
 }: {
 	instrument?: InstrumentType
 	ageGroup?: AgeGroupType
 } = {}) {
 	let dob = faker.date.birthdate({ min: 6, mode: 'age' })
+	instrument ??= randomInstrument()
+
 	if (ageGroup) {
 		switch (ageGroup) {
 			case 'rookie':
@@ -83,20 +99,8 @@ export function createStudent({
 	}
 	return {
 		name: faker.person.fullName(),
-		username: faker.internet.userName(),
-		dob,
-	}
-}
-
-export function createLesson() {
-	const newDate = new Date(2024, 1, 1, 15, 45, 0).toString()
-	const schedule = `${newDate.slice(0, 3)} ${newDate.slice(16, 21)}`
-
-	const instrument = randomInstrument()
-
-	return {
 		instrument,
-		schedule,
+		dob,
 	}
 }
 
@@ -157,30 +161,22 @@ export async function getNoteImages() {
 	return noteImages
 }
 
-let userImages: Array<Awaited<ReturnType<typeof img>>> | undefined
-export async function getUserImages() {
-	if (userImages) return userImages
-
-	userImages = await Promise.all(
-		Array.from({ length: 10 }, (_, index) =>
-			img({ filepath: `./tests/fixtures/images/user/${index}.jpg` }),
+export async function getProfileImages({
+	profile,
+	amount,
+}: {
+	profile: string
+	amount: number
+}): Promise<Array<Awaited<ReturnType<typeof img>>>> {
+	const images = await Promise.all(
+		Array.from({ length: amount }, (_, index) =>
+			img({
+				filepath: `./tests/fixtures/images/${profile}/${index % 20}.jpeg`,
+			}),
 		),
 	)
 
-	return userImages
-}
-
-let studentImages: Array<Awaited<ReturnType<typeof img>>> | undefined
-export async function getStudentImages() {
-	if (studentImages) return studentImages
-
-	studentImages = await Promise.all(
-		Array.from({ length: 20 }, (_, index) =>
-			img({ filepath: `./tests/fixtures/images/student/${index}.jpeg` }),
-		),
-	)
-
-	return studentImages
+	return images
 }
 
 export async function img({

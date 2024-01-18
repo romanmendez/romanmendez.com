@@ -104,9 +104,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 					prisma.user.findUniqueOrThrow({
 						select: {
 							id: true,
-							name: true,
 							username: true,
 							image: { select: { id: true } },
+							teacher: { select: { id: true, name: true } },
 							roles: {
 								select: {
 									name: true,
@@ -261,6 +261,16 @@ function App() {
 									</span>
 								</Link>
 							</li>
+							<li>
+								<Link
+									to={'/bands'}
+									className="flex h-16 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
+								>
+									<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
+										Bands
+									</span>
+								</Link>
+							</li>
 						</ul>
 						<div className="flex items-center gap-10">
 							{user ? (
@@ -331,11 +341,11 @@ function UserDropdown() {
 					>
 						<img
 							className="h-8 w-8 rounded-full object-cover"
-							alt={user.name ?? user.username}
+							alt={user.teacher?.name ?? user.username}
 							src={getUserImgSrc(user.image?.id)}
 						/>
 						<span className="text-body-sm font-bold">
-							{user.name ?? user.username}
+							{user.teacher?.name ?? user.username}
 						</span>
 					</Link>
 				</Button>

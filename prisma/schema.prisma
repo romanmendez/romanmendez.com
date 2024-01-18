@@ -11,44 +11,65 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(cuid())
-  email    String  @unique
-  username String  @unique
-  name     String?
+  id       String    @id @default(cuid())
+  email    String    @unique
+  username String    @unique
+  password Password?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image    UserImage?
-  password Password?
+  image UserImage?
 
   roles       Role[]
   sessions    Session[]
   connections Connection[]
   teacher     Teacher?
+  student     Student?
 }
 
 model Teacher {
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String @unique
+  id          String  @id @default(cuid())
+  name        String
+  instruments String
+  bio         String?
 
-  bio String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String? @unique
 
-  lessons       Lesson[]
-  lessonReviews LessonReview[]
-}
-
-model Student {
-  id       String   @id @default(cuid())
-  username String   @unique
-  name     String?
-  dob      DateTime
+  comments Comment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image   StudentImage?
-  lessons Lesson[]
+  students Student[]
+}
+
+model Student {
+  id         String        @id @default(cuid())
+  name       String
+  dob        DateTime
+  instrument String
+  image      StudentImage?
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String? @unique
+
+  teachers Teacher[]
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Band {
+  id       String @id @default(cuid())
+  name     String
+  ageGroup String
+  schedule String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Song {
@@ -63,36 +84,17 @@ model Song {
   updatedAt DateTime @updatedAt
 }
 
-model Lesson {
-  id         String @id @default(cuid())
-  instrument String
-  schedule   String
+model Comment {
+  id      String @id @default(cuid())
+  content String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author    Teacher @relation(fields: [authorId], references: [id])
+  authorId  String
+  student   Student @relation(fields: [studentId], references: [id])
   studentId String
-  teacher   Teacher @relation(fields: [teacherId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
-  teacherId String
-
-  review   LessonReview?
-  reviewId String?
-}
-
-model LessonReview {
-  id       String  @id @default(cuid())
-  content  String
-  mentions String?
-
-  author   Teacher @relation(fields: [authorId], references: [userId])
-  authorId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  lessonId String @unique
 
   // This helps our order by in the user search a LOT
   @@index([updatedAt])

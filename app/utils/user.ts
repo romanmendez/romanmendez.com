@@ -23,3 +23,11 @@ export function useUser() {
 	}
 	return maybeUser
 }
+
+export function useTeacher() {
+	const maybeTeacher = useUser()
+	if (!maybeTeacher.teacher) {
+		throw new Error('Logged in user is not a teacher.')
+	}
+	return maybeTeacher.teacher
+}

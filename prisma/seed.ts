@@ -1,18 +1,19 @@
+import { faker } from '@faker-js/faker'
+import { type Student } from '@prisma/client'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
 import {
+	ageGroupArray,
 	cleanupDb,
-	createLesson,
 	createPassword,
-	createSong,
 	createStudent,
 	createUser,
-	getStudentImages,
+	getLessonTimes,
+	getProfileImages,
 	img,
+	instrumentsArray,
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
-import { faker } from '@faker-js/faker'
-import { Teacher } from '@prisma/client'
 
 async function seed() {
 	console.log('🌱 Seeding...')
@@ -60,67 +61,124 @@ async function seed() {
 	})
 	console.timeEnd('👑 Created roles...')
 
-	const totalTeachers = 5
-	const teachers = []
-	console.time(`🎓 Created ${totalTeachers} private classes...`)
-	for (let index = 0; index < totalTeachers; index++) {
-		const userData = createUser()
-		const user = await prisma.user.create({
-			select: { id: true, teacher: true },
+	const totalBands = 20
+	console.time(`🎵 Created ${totalBands} bands...`)
+	Array.from({ length: totalBands }, async (_, index) => {
+		const ageGroup = ageGroupArray[index % ageGroupArray.length]
+		const times = getLessonTimes()
+		const schedule = times[index % times.length]
+		return await prisma.band.create({
+			select: { id: true },
 			data: {
-				...userData,
-				teacher: {
-					create: {
-						bio: faker.lorem.paragraph(4),
-					},
-				},
-				roles: { connect: { name: 'teacher' } },
+				name: `${ageGroup} ${schedule}`,
+				ageGroup,
+				schedule,
 			},
 		})
-		teachers.push(user)
-	}
-	console.timeEnd(`🎓 Created ${totalTeachers} private classes...`)
+	})
+	console.timeEnd(`🎵 Created ${totalBands} bands...`)
 
-	const totalStudents = 20
-	const studentImages = await getStudentImages()
-	console.time(`🧑 Created ${totalStudents} students...`)
-	for (let index = 0; index < totalStudents; index++) {
-		const student = createStudent()
-		const image = studentImages[index % studentImages.length]
-		const teacher = teachers[index % teachers.length]
-		await prisma.student.create({
-			data: {
-				...student,
-				lessons: {
-					create: {
-						...createLesson(),
-						teacherId: teacher.id,
-						review: {
-							create: {
-								content: faker.lorem.paragraph(1),
-								authorId: teacher.id,
-							},
+	const totalTeachers = 5
+	console.time(`📚 Created ${totalTeachers} teachers...`)
+	const teacherImages = await getProfileImages({
+		profile: 'teacher',
+		amount: totalTeachers,
+	})
+	const teacherUsers = await Promise.all(
+		Array.from({ length: totalTeachers }, async (_, index) => {
+			return await prisma.user.create({
+				select: {
+					teacher: { select: { id: true, instruments: true } },
+				},
+				data: {
+					...createUser(),
+					image: { create: teacherImages[index % teacherImages.length] },
+					teacher: {
+						create: {
+							name: faker.person.fullName(),
+							bio: faker.lorem.paragraph(1),
+							instruments: instrumentsArray[index],
 						},
 					},
 				},
-				image: { create: image },
-			},
-		})
-	}
-	console.timeEnd(`🧑 Created ${totalStudents} students...`)
+			})
+		}),
+	)
+	const teachers = teacherUsers.map(user => user.teacher)
+	console.timeEnd(`📚 Created ${totalTeachers} teachers...`)
 
-	const totalSongs = 10
-	console.time(`🎵 Created ${totalSongs} songs...`)
-	for (let index = 0; index < totalSongs; index++) {
-		const songData = createSong()
-		await prisma.song.create({
-			select: { id: true },
-			data: {
-				...songData,
-			},
+	const totalStudents = 60
+	console.time(`🥁 Created ${totalStudents} students...`)
+	const studentImages = await getProfileImages({
+		profile: 'student',
+		amount: totalStudents,
+	})
+	const studentsByInstrument: Record<
+		(typeof instrumentsArray)[number],
+		Pick<Student, 'id' | 'instrument'>[]
+	> = instrumentsArray.reduce<Record<string, any>>((obj, inst: string) => {
+		return { ...obj, [inst]: [] }
+	}, {})
+
+	for (
+		let instrumentIndex = 0;
+		instrumentIndex < instrumentsArray.length;
+		instrumentIndex++
+	) {
+		const instrument = instrumentsArray[instrumentIndex]
+		const teacher = teachers.find(t => t?.instruments.includes(instrument))
+		const instrumentStudentGroup = await Promise.all(
+			Array.from(
+				{ length: totalStudents / instrumentsArray.length },
+				async (_, index) => {
+					const ageGroup = ageGroupArray[index % ageGroupArray.length]
+					const studentData = createStudent({ instrument, ageGroup })
+
+					return await prisma.student.create({
+						select: { id: true, instrument: true },
+						data: {
+							...studentData,
+							...(teacher
+								? {
+										teachers: {
+											connect: teacher,
+										},
+								  }
+								: {}),
+							image: { create: studentImages[index % studentImages.length] },
+						},
+					})
+				},
+			),
+		)
+		studentsByInstrument[instrument] = instrumentStudentGroup
+	}
+	console.timeEnd(`🥁 Created ${totalStudents} students...`)
+
+	const commentsPerStudent = 10
+	console.time(`📝 Created ${commentsPerStudent} comments...`)
+	for (const instrument in studentsByInstrument) {
+		studentsByInstrument[instrument].forEach(async student => {
+			const teacher = await prisma.teacher.findFirstOrThrow({
+				select: { id: true },
+				where: { instruments: { contains: instrument } },
+			})
+			const masterDate = faker.date.recent()
+			for (let index = 0; index < commentsPerStudent; index++) {
+				const date = new Date(masterDate.setDate(masterDate.getDate() - 7))
+				await prisma.comment.create({
+					select: { id: true },
+					data: {
+						content: faker.lorem.paragraphs(1),
+						authorId: teacher.id,
+						studentId: student.id,
+						updatedAt: date,
+					},
+				})
+			}
 		})
 	}
-	console.timeEnd(`🎵 Created ${totalSongs} songs...`)
+	console.timeEnd(`📝 Created ${commentsPerStudent} comments...`)
 
 	console.time(`🐨 Created admin user "kody"`)
 
@@ -164,8 +222,13 @@ async function seed() {
 		data: {
 			email: 'kody@kcd.dev',
 			username: 'kody',
-			name: 'Kody',
 			image: { create: kodyImages.kodyUser },
+			teacher: {
+				create: {
+					instruments: 'drums',
+					name: 'Kody',
+				},
+			},
 			password: { create: createPassword('kodylovesyou') },
 			connections: {
 				create: { providerName: 'github', providerId: githubUser.profile.id },

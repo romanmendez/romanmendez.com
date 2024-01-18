@@ -9,6 +9,10 @@ export function getUserImgSrc(imageId?: string | null) {
 	return imageId ? `/resources/user-images/${imageId}` : '/img/user.png'
 }
 
+export function getTeacherImgSrc(imageId?: string | null) {
+	return imageId ? `/resources/teacher-images/${imageId}` : '/img/user.png'
+}
+
 export function getStudentImgSrc(imageId?: string | null) {
 	return imageId ? `/resources/student-images/${imageId}` : '/img/user.png'
 }
@@ -34,6 +38,34 @@ export function getErrorMessage(error: unknown) {
 export function getStudentAge(dob: Date | string) {
 	const age = new Date(Date.now() - new Date(dob).getTime())
 	return Math.abs(age.getUTCFullYear() - 1970).toString()
+}
+
+const formatter = new Intl.RelativeTimeFormat(undefined, {
+	numeric: 'auto',
+})
+
+const DIVISIONS: { amount: number; name: Intl.RelativeTimeFormatUnit }[] = [
+	{ amount: 60, name: 'seconds' },
+	{ amount: 60, name: 'minutes' },
+	{ amount: 24, name: 'hours' },
+	{ amount: 7, name: 'days' },
+	{ amount: 4.34524, name: 'weeks' },
+	{ amount: 12, name: 'months' },
+	{ amount: Number.POSITIVE_INFINITY, name: 'years' },
+]
+
+export function getTimeAgo(date: Date | string | undefined) {
+	if (!date) return ''
+	const dateFormat = new Date(date)
+	let duration = (dateFormat.getTime() - new Date().getTime()) / 1000
+
+	for (let i = 0; i < DIVISIONS.length; i++) {
+		const division = DIVISIONS[i]
+		if (Math.abs(duration) < division.amount) {
+			return formatter.format(Math.round(duration), division.name)
+		}
+		duration /= division.amount
+	}
 }
 
 function formatColors() {
