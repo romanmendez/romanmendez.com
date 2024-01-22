@@ -154,7 +154,6 @@ export async function action({ params, request }: ActionFunctionArgs) {
 export default function StudentProfileRoute() {
 	const data = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const submit = useSubmit()
 	const student = data.student
 	const comments = data.comments
 	const isTeacher = useTeacher()
@@ -166,15 +165,6 @@ export default function StudentProfileRoute() {
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
 			return parse(formData, { schema: CommentSchema })
-		},
-		onSubmit(event) {
-			const form = event.currentTarget
-			submit(form, {
-				navigate: false,
-				unstable_flushSync: true,
-			})
-			const content = form['content'] as unknown as HTMLInputElement
-			content.value = ''
 		},
 	})
 
