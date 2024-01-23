@@ -7,7 +7,7 @@ import { SearchBar } from '#app/components/search-bar.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getStudentImgSrc, useDelayedIsPending } from '#app/utils/misc.tsx'
 
-const CURRENT_ROUTE = '/students'
+const CURRENT_ROUTE = '/bands'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const searchTerm = new URL(request.url).searchParams.get('search')
@@ -16,25 +16,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}
 
 	const like = `%${searchTerm ?? ''}%`
-	const students = await prisma.student.findMany({
+	const bands = await prisma.band.findMany({
 		select: {
 			id: true,
 			name: true,
-			image: { select: { id: true } },
+			ageGroup: true,
+			schedule: true,
+			students: {
+				select: { id: true, name: true, image: { select: { id: true } } },
+			},
 		},
 		where: {
 			name: { contains: like },
 		},
 	})
 
-	invariantResponse(students, 'No students found', { status: 404 })
+	invariantResponse(bands, 'No students found', { status: 404 })
 
-	return json({ status: 'idle', students } as const)
+	return json({ status: 'idle', bands } as const)
 }
 
 export default function StudentRoute() {
 	const data = useLoaderData<typeof loader>()
 	const formAction = CURRENT_ROUTE
+	const bands = data.bands
 	const isPending = useDelayedIsPending({
 		formMethod: 'GET',
 		formAction,
@@ -42,7 +47,7 @@ export default function StudentRoute() {
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
-			<h1 className="text-h1">Students</h1>
+			<h1 className="text-h1">Bands</h1>
 			<div className="w-full max-w-[700px] ">
 				<SearchBar
 					status={data.status}
@@ -53,29 +58,33 @@ export default function StudentRoute() {
 			</div>
 			<main>
 				{data.status === 'idle' ? (
-					data.students.length ? (
+					bands.length ? (
 						<ul
-							className={cn(
-								'flex w-full flex-wrap items-center justify-center gap-4 delay-200',
-								{ 'opacity-50': isPending },
-							)}
+							className={cn('divide-y divide-gray-100', {
+								'opacity-50': isPending,
+							})}
 						>
-							{data.students.map(student => (
-								<li key={student.id}>
-									<Link
-										to={student.id}
-										className="flex h-36 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
-									>
-										<img
-											alt={student.name}
-											src={getStudentImgSrc(student.image?.id)}
-											className="h-16 w-16 rounded-full"
-										/>
-										{student.name ? (
-											<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">
-												{student.name}
-											</span>
-										) : null}
+							{bands.map(band => (
+								<li key={band.id} className="flex justify-between gap-x-6 py-5">
+									<Link to={band.id} className="flex min-w-0 gap-x-4">
+										<div className="flex -space-x-2 overflow-hidden">
+											{band.students.map(student => (
+												<img
+													key={student.id}
+													alt={student.name}
+													src={getStudentImgSrc(student.image?.id)}
+													className="inline-block h-10 w-10 rounded-full ring-2 ring-white"
+												/>
+											))}
+										</div>
+										<div className="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+											<p className="text-sm leading-6 text-gray-900 text-muted-foreground">
+												{band.name}
+											</p>
+											<p className="mt-1 text-xs leading-5 text-gray-500">
+												Last seen
+											</p>
+										</div>
 									</Link>
 								</li>
 							))}

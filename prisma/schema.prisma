@@ -43,6 +43,7 @@ model Teacher {
   updatedAt DateTime @updatedAt
 
   students Student[]
+  bands    Band[]
 }
 
 model Student {
@@ -58,6 +59,9 @@ model Student {
   teachers Teacher[]
   comments Comment[]
 
+  band   Band?   @relation(fields: [bandId], references: [id])
+  bandId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -67,6 +71,9 @@ model Band {
   name     String
   ageGroup String
   schedule String
+
+  students Student[]
+  teachers Teacher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

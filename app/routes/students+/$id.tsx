@@ -12,7 +12,6 @@ import {
 	type MetaFunction,
 	Form,
 	useActionData,
-	useSubmit,
 } from '@remix-run/react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
@@ -20,7 +19,6 @@ import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { ErrorList, TextareaField } from '#app/components/forms'
 import { Spacer } from '#app/components/spacer.tsx'
 import { Button } from '#app/components/ui/button.tsx'
-import { Icon } from '#app/components/ui/icon'
 import { StatusButton } from '#app/components/ui/status-button'
 import { requireUserId } from '#app/utils/auth.server'
 import { validateCSRF } from '#app/utils/csrf.server'
@@ -32,7 +30,7 @@ import {
 	getUserImgSrc,
 	useIsPending,
 } from '#app/utils/misc.tsx'
-import { useTeacher } from '#app/utils/user'
+import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const student = await prisma.student.findFirst({
@@ -113,9 +111,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	console.log('outside delete if', submission)
 	if (submission.intent === 'delete-comment') {
-		console.log('inside delete if', submission)
 		await prisma.comment.deleteMany({
 			where: { id: submission.value?.id },
 		})
@@ -156,7 +152,8 @@ export default function StudentProfileRoute() {
 	const actionData = useActionData<typeof action>()
 	const student = data.student
 	const comments = data.comments
-	const isTeacher = useTeacher()
+	const loggedInUser = useOptionalUser()
+	const loggedInTeacher = Boolean(loggedInUser?.teacher)
 	const isPending = useIsPending()
 
 	const [form, fields] = useForm({
@@ -195,7 +192,7 @@ export default function StudentProfileRoute() {
 						Joined {data.userJoinedDisplay}
 					</p>
 				</div>
-				{isTeacher ? (
+				{loggedInTeacher ? (
 					<>
 						<div className="mt-10 flex gap-4">
 							<Button asChild>
@@ -210,7 +207,7 @@ export default function StudentProfileRoute() {
 							<input
 								type="hidden"
 								{...conform.input(fields.teacherId)}
-								value={isTeacher.id}
+								value={loggedInUser?.teacher?.id}
 							/>
 							<div className="mb-4 rounded-lg rounded-t-lg border border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
 								<TextareaField
@@ -230,44 +227,46 @@ export default function StudentProfileRoute() {
 						</Form>
 					</>
 				) : null}
-				<ul
-					aria-label="User feed"
-					role="feed"
-					className="relative flex flex-col gap-12 py-12 pl-8 before:absolute before:left-8 before:top-0 before:h-full before:-translate-x-1/2 before:border before:border-dashed before:border-slate-200 after:absolute after:bottom-6 after:left-8 after:top-6 after:-translate-x-1/2 after:border after:border-slate-200 "
-				>
-					{comments.map(comment => (
-						<li key={comment.id} role="article" className="relative pl-8 ">
-							<div className="flex flex-1 flex-col gap-4">
-								<Link to={`/teachers/${comment.author.id}`}>
-									<div className="absolute -left-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-white ring-2 ring-white">
-										<img
-											src={getUserImgSrc(comment.author.user?.image?.id)}
-											alt="user name"
-											title="user name"
-											width="48"
-											height="48"
-											className="max-w-full rounded-full"
-										/>
-									</div>
-									<h4 className="flex flex-col items-start text-lg font-medium leading-8 text-slate-700 md:flex-row lg:items-center">
-										<span className="flex-1">
-											{comment.author.name}
-											<span className="text-base font-normal text-slate-500">
-												{' '}
-												left a lesson comment
+				{comments.length ? (
+					<ul
+						aria-label="User feed"
+						role="feed"
+						className="relative flex flex-col gap-12 py-12 pl-8 before:absolute before:left-8 before:top-0 before:h-full before:-translate-x-1/2 before:border before:border-dashed before:border-slate-200 after:absolute after:bottom-6 after:left-8 after:top-6 after:-translate-x-1/2 after:border after:border-slate-200 "
+					>
+						{comments.map(comment => (
+							<li key={comment.id} role="article" className="relative pl-8 ">
+								<div className="flex flex-1 flex-col gap-4">
+									<Link to={`/teachers/${comment.author.id}`}>
+										<div className="absolute -left-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-white ring-2 ring-white">
+											<img
+												src={getUserImgSrc(comment.author.user?.image?.id)}
+												alt="user name"
+												title="user name"
+												width="48"
+												height="48"
+												className="max-w-full rounded-full"
+											/>
+										</div>
+										<h4 className="flex flex-col items-start text-lg font-medium leading-8 text-slate-700 md:flex-row lg:items-center">
+											<span className="flex-1">
+												{comment.author.name}
+												<span className="text-base font-normal text-slate-500">
+													{' '}
+													left a lesson comment
+												</span>
 											</span>
-										</span>
-										<span className="text-sm font-normal text-slate-400">
-											{' '}
-											{getTimeAgo(comment.updatedAt)}
-										</span>
-									</h4>
-								</Link>
-								<p className=" text-slate-500">{comment.content}</p>
-							</div>
-						</li>
-					))}
-				</ul>
+											<span className="text-sm font-normal text-slate-400">
+												{' '}
+												{getTimeAgo(comment.updatedAt)}
+											</span>
+										</h4>
+									</Link>
+									<p className=" text-slate-500">{comment.content}</p>
+								</div>
+							</li>
+						))}
+					</ul>
+				) : null}
 			</div>
 		</div>
 	)
