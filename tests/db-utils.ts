@@ -17,18 +17,19 @@ export function randomInstrument() {
 	]
 }
 
-export function getLessonTimes() {
+export function getLessonSchedule() {
+	const day = faker.date.weekday({ abbreviated: true })
+	const hours = Array.from({ length: 22 - 15 }, (_, i) => i + 15)
 	const minutes = Array.from({ length: 4 }, (_, i) =>
 		i * 15 === 0 ? '00' : (i * 15).toString(),
 	)
-	const hours = Array.from({ length: 22 - 15 }, (_, i) => i + 15)
-	const time = []
+	const schedule = []
 	for (let x = 0; x < hours.length; x++) {
 		for (let y = 0; y < minutes.length; y++) {
-			time.push(`${hours[x]}:${minutes[y]}`)
+			schedule.push(`${day} ${hours[x]}:${minutes[y]}`)
 		}
 	}
-	return time
+	return schedule
 }
 
 export function createUser() {

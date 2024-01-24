@@ -154,27 +154,15 @@ export default function TeacherProfileRoute() {
 										</p>
 									</div>
 								</li>
-								<ul className="px-20">
+								<ul>
 									{student.comments.map(comment => (
 										<li
 											key={comment.id}
 											role="article"
 											className="relative pl-8"
 										>
-											<div className="flex flex-1 flex-col gap-4">
+											<div className="flex flex-1 flex-col">
 												<Link to={`/teachers/${comment.author.id}`}>
-													<div className="absolute -left-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-white ring-2 ring-white">
-														<img
-															src={getUserImgSrc(
-																comment.author.user?.image?.id,
-															)}
-															alt="user name"
-															title="user name"
-															width="48"
-															height="48"
-															className="max-w-full rounded-full"
-														/>
-													</div>
 													<h4 className="flex flex-col items-start text-lg font-medium leading-8 text-slate-700 md:flex-row lg:items-center">
 														<span className="flex-1">
 															{comment.author.name}

@@ -9,10 +9,6 @@ export function getUserImgSrc(imageId?: string | null) {
 	return imageId ? `/resources/user-images/${imageId}` : '/img/user.png'
 }
 
-export function getTeacherImgSrc(imageId?: string | null) {
-	return imageId ? `/resources/teacher-images/${imageId}` : '/img/user.png'
-}
-
 export function getStudentImgSrc(imageId?: string | null) {
 	return imageId ? `/resources/student-images/${imageId}` : '/img/user.png'
 }

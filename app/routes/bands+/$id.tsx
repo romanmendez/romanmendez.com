@@ -11,7 +11,7 @@ import {
 	getTimeAgo,
 	getUserImgSrc,
 } from '#app/utils/misc.tsx'
-import { useOptionalUser, useUser } from '#app/utils/user'
+import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const band = await prisma.band.findFirst({
@@ -77,13 +77,13 @@ export default function StudentProfileRoute() {
 
 			<div className="container flex flex-col items-center rounded-3xl bg-muted p-12">
 				<div className="w-100 relative">
-					<div className="flex -space-x-10 overflow-hidden">
+					<div className="flex -space-x-10">
 						{band.students.map(student => (
 							<img
 								key={student.id}
 								alt={student.name}
 								src={getStudentImgSrc(student.image?.id)}
-								className="h-30 w-30 inline-block rounded-full ring-2 ring-white"
+								className={` h-1/${band.students.length} w-1/${band.students.length} inline-block rounded-full ring-2 ring-white `}
 							/>
 						))}
 					</div>
@@ -129,7 +129,7 @@ export default function StudentProfileRoute() {
 											alt=""
 										/>
 										<div className="min-w-0 flex-auto">
-											<p className="text-sm font-semibold leading-6 text-foreground">
+											<p className="text-xl font-semibold leading-6 text-foreground">
 												{student.name}
 											</p>
 											<p className="mt-1 truncate text-xs leading-5 text-gray-500">
@@ -143,38 +143,22 @@ export default function StudentProfileRoute() {
 										</p>
 									</div>
 								</li>
-								<ul className="px-20">
+								<ul>
 									{student.comments.map(comment => (
 										<li
 											key={comment.id}
 											role="article"
 											className="relative pl-8"
 										>
-											<div className="flex flex-1 flex-col gap-4">
+											<div className="flex flex-1 flex-col ">
 												<Link to={`/teachers/${comment.author.id}`}>
-													<div className="absolute -left-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-white ring-2 ring-white">
-														<img
-															src={getUserImgSrc(
-																comment.author.user?.image?.id,
-															)}
-															alt="user name"
-															title="user name"
-															width="48"
-															height="48"
-															className="max-w-full rounded-full"
-														/>
-													</div>
 													<h4 className="flex flex-col items-start text-lg font-medium leading-8 text-slate-700 md:flex-row lg:items-center">
 														<span className="flex-1">
 															{comment.author.name}
 															<span className="text-base font-normal text-slate-500">
 																{' '}
-																left a lesson comment
+																{getTimeAgo(comment.updatedAt)}
 															</span>
-														</span>
-														<span className="text-sm font-normal text-slate-400">
-															{' '}
-															{getTimeAgo(comment.updatedAt)}
 														</span>
 													</h4>
 												</Link>

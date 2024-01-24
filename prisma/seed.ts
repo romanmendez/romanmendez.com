@@ -7,6 +7,7 @@ import {
 	createPassword,
 	createStudent,
 	createUser,
+	getLessonSchedule,
 	getLessonTimes,
 	getProfileImages,
 	img,
@@ -153,12 +154,14 @@ async function seed() {
 	})
 	Array.from({ length: totalBands }, async (_, index) => {
 		const ageGroup = ageGroupArray[index % ageGroupArray.length]
-		const times = getLessonTimes()
+		const times = getLessonSchedule()
 		const schedule = times[index % times.length]
 		return await prisma.band.create({
 			select: { id: true },
 			data: {
-				name: `${ageGroup} ${schedule}`,
+				name: `${
+					ageGroup.charAt(0).toUpperCase() + ageGroup.slice(1)
+				} ${schedule}`,
 				ageGroup,
 				schedule,
 				students: {
