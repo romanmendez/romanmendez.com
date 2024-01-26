@@ -37,7 +37,7 @@ model Teacher {
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String? @unique
 
-  comments Comment[]
+  songComments SongComment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,8 +56,9 @@ model Student {
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String? @unique
 
-  teachers Teacher[]
-  comments Comment[]
+  teachers     Teacher[]
+  songs        Song[]
+  songComments SongComment[]
 
   band   Band?   @relation(fields: [bandId], references: [id])
   bandId String?
@@ -74,9 +75,22 @@ model Band {
 
   students Student[]
   teachers Teacher[]
+  setlists Setlist[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Setlist {
+  id    String @id @default(cuid())
+  theme String
+
+  band     Band   @relation(fields: [bandId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  bandId   String
+  season   Season @relation(fields: [seasonId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  seasonId String
+
+  songs Song[]
 }
 
 model Song {
@@ -86,19 +100,37 @@ model Song {
   description String?
   key         String?
   bpm         String?
+  lyrics      String?
+
+  setlists Setlist[]
+  comments SongComment[]
+  students Student[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Comment {
-  id      String @id @default(cuid())
-  content String
+model Season {
+  id          String    @id @default(cuid())
+  startDate   DateTime
+  endDate     DateTime?
+  concertDate DateTime?
 
-  author    Teacher @relation(fields: [authorId], references: [id])
-  authorId  String
-  student   Student @relation(fields: [studentId], references: [id])
-  studentId String
+  setlists Setlist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SongComment {
+  id       String    @id @default(cuid())
+  content  String
+  mentions Student[]
+
+  author   Teacher @relation(fields: [authorId], references: [id])
+  authorId String
+  song     Song    @relation(fields: [songId], references: [id])
+  songId   String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

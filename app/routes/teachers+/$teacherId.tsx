@@ -7,96 +7,107 @@ import { Button } from '#app/components/ui/button.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import {
 	getStudentAge,
-	getStudentImgSrc,
-	getTimeAgo,
 	getUserImgSrc,
+	getTimeAgo,
+	getStudentImgSrc,
 } from '#app/utils/misc.tsx'
 import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const band = await prisma.band.findFirst({
+	const teacher = await prisma.teacher.findFirst({
 		select: {
 			id: true,
 			name: true,
-			ageGroup: true,
-			schedule: true,
 			createdAt: true,
-			updatedAt: true,
+			userId: true,
 			students: {
 				select: {
 					id: true,
 					name: true,
 					dob: true,
-					instrument: true,
 					image: { select: { id: true } },
-					comments: {
-						select: {
-							id: true,
-							content: true,
-							author: {
-								select: {
-									id: true,
-									name: true,
-									user: { select: { image: { select: { id: true } } } },
-								},
-							},
-							updatedAt: true,
-						},
-						orderBy: { updatedAt: 'asc' },
-						take: 1,
-					},
 				},
 			},
-			teachers: {
-				select: {
-					id: true,
-					name: true,
-					user: { select: { id: true, image: { select: { id: true } } } },
-				},
-			},
+			user: { select: { id: true, image: { select: { id: true } } } },
 		},
 		where: {
-			id: params.id,
+			id: params.teacherId,
 		},
 	})
-	invariantResponse(band, 'User not found', { status: 404 })
+
+	invariantResponse(teacher, 'Teacher not found', { status: 404 })
+
+	const students = await prisma.student.findMany({
+		where: {
+			teachers: { some: { id: teacher.id } },
+		},
+		select: {
+			id: true,
+			name: true,
+			dob: true,
+			instrument: true,
+			updatedAt: true,
+			image: { select: { id: true } },
+			songComments: {
+				select: {
+					id: true,
+					content: true,
+					updatedAt: true,
+					author: {
+						select: {
+							name: true,
+							id: true,
+							user: { select: { image: { select: { id: true } } } },
+						},
+					},
+				},
+				take: 1,
+				orderBy: {
+					createdAt: 'desc',
+				},
+			},
+		},
+	})
 
 	return json({
-		band,
+		teacher,
+		students,
+		userJoinedDisplay: teacher.createdAt.toLocaleDateString(),
 	})
 }
 
-export default function StudentProfileRoute() {
+export default function TeacherProfileRoute() {
 	const data = useLoaderData<typeof loader>()
-	const band = data.band
+	const teacher = data.teacher
+	const students = data.students
 	const loggedInUser = useOptionalUser()
+	const isLoggedInUser = data.teacher.userId == loggedInUser?.id
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center">
 			<Spacer size="4xs" />
 
 			<div className="container flex flex-col items-center rounded-3xl bg-muted p-12">
-				<div className="w-100 relative">
-					<div className="flex -space-x-10">
-						{band.students.map(student => (
+				<div className="relative w-52">
+					<div className="absolute -top-40">
+						<div className="relative">
 							<img
-								key={student.id}
-								alt={student.name}
-								src={getStudentImgSrc(student.image?.id)}
-								className={` h-1/${band.students.length} w-1/${band.students.length} inline-block rounded-full ring-2 ring-white `}
+								src={getUserImgSrc(teacher.user?.image?.id)}
+								alt={teacher.name}
+								className="h-52 w-52 rounded-full object-cover"
 							/>
-						))}
+						</div>
 					</div>
 				</div>
 
-				<Spacer size="4xs" />
+				<Spacer size="sm" />
 
 				<div className="flex flex-col items-center">
 					<div className="flex flex-wrap items-center justify-center gap-4">
-						<h1 className="text-center text-h2">{band.name}</h1>
+						<h1 className="text-center text-h2">{teacher.name}</h1>
 					</div>
 					<p className="mt-2 text-center text-muted-foreground">
-						Joined {data.band.createdAt}
+						Joined {data.userJoinedDisplay}
 					</p>
 					<div className="mt-10 flex gap-4">
 						<Button asChild>
@@ -104,7 +115,7 @@ export default function StudentProfileRoute() {
 								My notes
 							</Link>
 						</Button>
-						{loggedInUser ? (
+						{isLoggedInUser ? (
 							<Button asChild>
 								<Link to="/settings/profile" prefetch="intent">
 									Edit profile
@@ -114,7 +125,7 @@ export default function StudentProfileRoute() {
 					</div>
 				</div>
 				<ul className="divide-y divide-gray-100">
-					{band.students.map(student => (
+					{students.map(student => (
 						<Link
 							key={student.id}
 							to={`/students/${student.id}`}
@@ -129,7 +140,7 @@ export default function StudentProfileRoute() {
 											alt=""
 										/>
 										<div className="min-w-0 flex-auto">
-											<p className="text-xl font-semibold leading-6 text-foreground">
+											<p className="text-sm font-semibold leading-6 text-foreground">
 												{student.name}
 											</p>
 											<p className="mt-1 truncate text-xs leading-5 text-gray-500">
@@ -144,21 +155,25 @@ export default function StudentProfileRoute() {
 									</div>
 								</li>
 								<ul>
-									{student.comments.map(comment => (
+									{student.songComments.map(comment => (
 										<li
 											key={comment.id}
 											role="article"
 											className="relative pl-8"
 										>
-											<div className="flex flex-1 flex-col ">
+											<div className="flex flex-1 flex-col">
 												<Link to={`/teachers/${comment.author.id}`}>
 													<h4 className="flex flex-col items-start text-lg font-medium leading-8 text-slate-700 md:flex-row lg:items-center">
 														<span className="flex-1">
 															{comment.author.name}
 															<span className="text-base font-normal text-slate-500">
 																{' '}
-																{getTimeAgo(comment.updatedAt)}
+																left a lesson comment
 															</span>
+														</span>
+														<span className="text-sm font-normal text-slate-400">
+															{' '}
+															{getTimeAgo(comment.updatedAt)}
 														</span>
 													</h4>
 												</Link>
@@ -176,8 +191,8 @@ export default function StudentProfileRoute() {
 	)
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
-	const displayName = data?.band.name ?? params.username
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+	const displayName = data?.teacher.name
 	return [
 		{ title: `${displayName} | Epic Notes` },
 		{

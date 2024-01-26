@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { faker } from '@faker-js/faker'
-import { type PrismaClient } from '@prisma/client'
+import { Song, type PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
 
@@ -56,18 +56,25 @@ export function createUser() {
 	}
 }
 
-export function createSong() {
+export async function createSong(
+	number: number,
+): Promise<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>[]> {
 	const keys = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
-	return {
-		title: faker.music.songName(),
-		artist: faker.word.words({ count: { min: 1, max: 3 } }),
-		description: faker.lorem.paragraph({ min: 1, max: 3 }),
-		key: `${keys[faker.number.int({ min: 0, max: keys.length - 1 })]}${
-			Math.random() < 0.5 ? 'm' : ''
-		}`,
-		bpm: faker.number.int({ min: 60, max: 200 }).toString(),
-	}
+	return await Promise.all(
+		Array.from({ length: number }, () => {
+			return {
+				title: faker.music.songName(),
+				artist: faker.word.words({ count: { min: 1, max: 3 } }),
+				description: faker.lorem.paragraph({ min: 1, max: 3 }),
+				key: `${keys[faker.number.int({ min: 0, max: keys.length - 1 })]}${
+					Math.random() < 0.5 ? 'm' : ''
+				}`,
+				bpm: faker.number.int({ min: 60, max: 200 }).toString(),
+				lyrics: faker.lorem.paragraphs(4),
+			}
+		}),
+	)
 }
 
 export function createStudent({
