@@ -38,9 +38,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		where: { id: userId },
 		select: {
 			id: true,
-			name: true,
 			username: true,
 			email: true,
+			teacher: { select: { name: true } },
+			admin: { select: { name: true } },
+			student: { select: { name: true } },
 			image: {
 				select: { id: true },
 			},
@@ -202,6 +204,15 @@ async function profileUpdateAction({ userId, formData }: ProfileActionArgs) {
 	if (!submission.value) {
 		return json({ status: 'error', submission } as const, { status: 400 })
 	}
+	const user = await prisma.user.findUnique({
+		select: {
+			teacher: { select: { id: true } },
+			student: { select: { id: true } },
+			admin: { select: { id: true } },
+		},
+		where: { id: userId },
+	})
+	const role = user?.teacher ? 'teacher' : user?.admin ? 'admin' : 'student'
 
 	const data = submission.value
 
@@ -209,8 +220,10 @@ async function profileUpdateAction({ userId, formData }: ProfileActionArgs) {
 		select: { username: true },
 		where: { id: userId },
 		data: {
-			name: data.name,
 			username: data.username,
+			[role]: {
+				update: { name: data.name },
+			},
 		},
 	})
 
@@ -219,6 +232,7 @@ async function profileUpdateAction({ userId, formData }: ProfileActionArgs) {
 
 function UpdateProfile() {
 	const data = useLoaderData<typeof loader>()
+	const profile = data.user.teacher ?? data.user.admin ?? data.user.student
 
 	const fetcher = useFetcher<typeof profileUpdateAction>()
 
@@ -231,7 +245,7 @@ function UpdateProfile() {
 		},
 		defaultValue: {
 			username: data.user.username,
-			name: data.user.name ?? '',
+			name: profile?.name ?? '',
 			email: data.user.email,
 		},
 	})
