@@ -15,12 +15,10 @@ import {
 } from '@remix-run/react'
 import { useState } from 'react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
-import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { ErrorList, TextareaField } from '#app/components/forms'
 import { StatusButton } from '#app/components/ui/status-button'
-import { requireUserId } from '#app/utils/auth.server'
-import { validateCSRF } from '#app/utils/csrf.server'
+import { CommentSchema, validateComment } from '#app/utils/comments.server'
 import { prisma } from '#app/utils/db.server.ts'
 import { getTimeAgo, getUserImgSrc, useIsPending } from '#app/utils/misc'
 import { useOptionalUser } from '#app/utils/user'
@@ -69,88 +67,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
 	})
 }
 
-const CommentSchema = z.object({
-	id: z.string().optional(),
-	teacherId: z.string(),
-	songId: z.string(),
-	mentions: z.string(),
-	content: z
-		.string({ required_error: 'Please enter a comment before submitting.' })
-		.min(1),
-})
-
 export async function action({ request }: ActionFunctionArgs) {
-	const userId = await requireUserId(request)
-	const formData = await request.formData()
-
-	await validateCSRF(formData, request.headers)
-
-	const submission = await parse(formData, {
-		schema: CommentSchema.superRefine(async (data, ctx) => {
-			if (!data.id) return
-
-			const comment = await prisma.songComment.findUnique({
-				select: { id: true },
-				where: { id: data.id, authorId: userId },
-			})
-			if (!comment) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: 'Note not found',
-				})
-			}
-		}).transform(({ mentions, ...data }) => {
-			const mentionsArray = mentions.split(',').map(m => ({ id: m }))
-			return {
-				...data,
-				mentions: mentionsArray,
-			}
-		}),
-		async: true,
-	})
-
-	if (submission.intent === 'delete-comment') {
-		await prisma.songComment.deleteMany({
-			where: { id: submission.value?.id },
-		})
-		return json({ status: 'success', submission } as const)
-	}
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
-	}
-
-	if (!submission.value) {
-		return json({ status: 'error', submission } as const, { status: 400 })
-	}
-
-	const {
-		id: commentId,
-		content,
-		teacherId,
-		songId,
-		mentions,
-	} = submission.value
-
-	await prisma.songComment.upsert({
-		where: { id: commentId ?? '__new_note__' },
-		create: {
-			mentions: { connect: mentions },
-			authorId: teacherId,
-			songId,
-			content,
-		},
-		update: {
-			content,
-			mentions: { connect: mentions },
-		},
-	})
-	return json({
-		status: 'success',
-		submission: {
-			...submission,
-			payload: null,
-		},
-	} as const)
+	return await validateComment({ request })
 }
 
 export default function SongRoute() {
@@ -163,14 +81,6 @@ export default function SongRoute() {
 	const isTeacher = Boolean(loggedInUser?.teacher)
 	const isPending = useIsPending()
 
-	console.log(mentions, Array.from(mentions))
-
-	const handleMentions = (studentId: string) => {
-		const newSet = new Set(mentions)
-		newSet.has(studentId) ? newSet.delete(studentId) : newSet.add(studentId)
-		setMentions(newSet)
-	}
-
 	const [form, fields] = useForm({
 		id: 'comment-editor',
 		constraint: getFieldsetConstraint(CommentSchema),
@@ -178,10 +88,13 @@ export default function SongRoute() {
 		onValidate({ formData }) {
 			return parse(formData, { schema: CommentSchema })
 		},
-		onSubmit() {
-			setMentions(new Set())
-		},
 	})
+
+	const handleMentions = (studentId: string) => {
+		const newSet = new Set(mentions)
+		newSet.has(studentId) ? newSet.delete(studentId) : newSet.add(studentId)
+		setMentions(newSet)
+	}
 
 	return (
 		<div className="container mb-48 mt-16 flex flex-col items-center justify-center">

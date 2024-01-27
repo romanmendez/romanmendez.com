@@ -321,6 +321,116 @@ async function seed() {
 										],
 									},
 								},
+								{
+									...songs[1],
+
+									students: {
+										connect: [
+											drumsStudents[index],
+											bassStudents[index],
+											keysStudents[index],
+											guitarStudents[index],
+											vocalStudents[index],
+										],
+									},
+									comments: {
+										create: [
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: drumTeacher.id,
+												mentions: { connect: drumsStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: bassTeacher.id,
+												mentions: { connect: bassStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: keysTeacher.id,
+												mentions: { connect: keysStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: guitarTeacher.id,
+												mentions: { connect: guitarStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: vocalsTeacher.id,
+												mentions: { connect: vocalStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: teachers[index % teachers.length].id,
+												mentions: {
+													connect: [
+														drumsStudents[index],
+														bassStudents[index],
+														keysStudents[index],
+														guitarStudents[index],
+														vocalStudents[index],
+													],
+												},
+											},
+										],
+									},
+								},
+								{
+									...songs[2],
+
+									students: {
+										connect: [
+											drumsStudents[index],
+											bassStudents[index],
+											keysStudents[index],
+											guitarStudents[index],
+											vocalStudents[index],
+										],
+									},
+									comments: {
+										create: [
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: drumTeacher.id,
+												mentions: { connect: drumsStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: bassTeacher.id,
+												mentions: { connect: bassStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: keysTeacher.id,
+												mentions: { connect: keysStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: guitarTeacher.id,
+												mentions: { connect: guitarStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: vocalsTeacher.id,
+												mentions: { connect: vocalStudents[index] },
+											},
+											{
+												content: faker.lorem.paragraphs(1),
+												authorId: teachers[index % teachers.length].id,
+												mentions: {
+													connect: [
+														drumsStudents[index],
+														bassStudents[index],
+														keysStudents[index],
+														guitarStudents[index],
+														vocalStudents[index],
+													],
+												},
+											},
+										],
+									},
+								},
 							],
 						},
 					},

@@ -1,15 +1,34 @@
+import { conform, useForm } from '@conform-to/react'
+import { getFieldsetConstraint, parse } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
-import { json, type LoaderFunctionArgs } from '@remix-run/node'
-import { Link, useLoaderData, type MetaFunction } from '@remix-run/react'
+import {
+	type ActionFunctionArgs,
+	json,
+	type LoaderFunctionArgs,
+} from '@remix-run/node'
+import {
+	Link,
+	useLoaderData,
+	type MetaFunction,
+	useActionData,
+	Form,
+} from '@remix-run/react'
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
+import { ErrorList, TextareaField } from '#app/components/forms'
 import { Spacer } from '#app/components/spacer.tsx'
+import { StatusButton } from '#app/components/ui/status-button'
+import { CommentSchema, validateComment } from '#app/utils/comments.server'
 import { prisma } from '#app/utils/db.server.ts'
 import {
 	getStudentAge,
 	getStudentImgSrc,
 	getTimeAgo,
 	getUserImgSrc,
+	useIsPending,
 } from '#app/utils/misc.tsx'
+import { useOptionalUser } from '#app/utils/user'
+import { Song, SongComment } from '@prisma/client'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const student = await prisma.student.findFirst({
@@ -29,6 +48,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 					bpm: true,
 					updatedAt: true,
 					comments: {
+						where: { mentions: { some: { id: params.studentId } } },
 						select: {
 							id: true,
 							updatedAt: true,
@@ -41,7 +61,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
 								},
 							},
 						},
-						orderBy: { updatedAt: 'asc' },
+						orderBy: { updatedAt: 'desc' },
+						take: 5,
 					},
 				},
 			},
@@ -62,6 +83,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		},
 		userJoinedDisplay: student.createdAt.toLocaleDateString(),
 	})
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+	return await validateComment({ request })
 }
 
 export default function StudentProfileRoute() {
@@ -96,11 +121,12 @@ export default function StudentProfileRoute() {
 						Joined {data.userJoinedDisplay}
 					</p>
 				</div>
-				{songs.length ? (
-					<>
-						{songs.map(song => (
-							<>
-								<h2 className="text-h2">{song.title}</h2>
+				{songs.length
+					? songs.map(song => (
+							<div key={song.id}>
+								<Link to={`/songs/${song.id}`} className="text-h2">
+									{song.title}
+								</Link>
 								<ul
 									aria-label="User feed"
 									role="feed"
@@ -145,10 +171,9 @@ export default function StudentProfileRoute() {
 										</li>
 									))}
 								</ul>
-							</>
-						))}
-					</>
-				) : null}
+							</div>
+					  ))
+					: null}
 			</div>
 		</div>
 	)
