@@ -2,6 +2,8 @@ import { faker } from '@faker-js/faker'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
 import {
+	AgeGroupType,
+	InstrumentType,
 	ageGroupArray,
 	cleanupDb,
 	createPassword,
@@ -9,20 +11,13 @@ import {
 	createStudent,
 	createUser,
 	getLessonSchedule,
-	getProfileImages,
 	img,
 	instrumentsArray,
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
+import { Student } from '@prisma/client'
 
-async function seed() {
-	console.log('🌱 Seeding...')
-	console.time(`🌱 Database has been seeded`)
-
-	console.time('🧹 Cleaned up the database...')
-	await cleanupDb(prisma)
-	console.timeEnd('🧹 Cleaned up the database...')
-
+async function seedPermissionsAndRoles() {
 	console.time('🔑 Created permissions...')
 	const entities = ['user', 'note']
 	const actions = ['create', 'read', 'update', 'delete']
@@ -60,180 +55,57 @@ async function seed() {
 		},
 	})
 	console.timeEnd('👑 Created roles...')
+}
+
+async function seed() {
+	console.log('🌱 Seeding...')
+	console.time(`🌱 Database has been seeded`)
+
+	console.time('🧹 Cleaned up the database...')
+	await cleanupDb(prisma)
+	console.timeEnd('🧹 Cleaned up the database...')
 
 	const totalTeachers = instrumentsArray.length
 	console.time(`📚 Created ${totalTeachers} teachers...`)
-	const teacherImages = await getProfileImages({
-		profile: 'teacher',
-		amount: totalTeachers,
-	})
-	const drumTeacher = await prisma.teacher.create({
-		select: { id: true },
-		data: {
-			name: faker.person.fullName(),
-			bio: faker.lorem.paragraph(1),
-			instruments: 'drums',
-			user: {
-				create: {
-					...createUser(),
-					image: { create: teacherImages[0] },
+	const teachers = await Promise.all(
+		Array.from({ length: totalTeachers }, async (_, index) => {
+			const user = await createUser()
+			return await prisma.teacher.create({
+				select: { id: true },
+				data: {
+					name: faker.person.fullName(),
+					bio: faker.lorem.paragraph(1),
+					instruments: instrumentsArray[index],
+					user: {
+						create: user,
+					},
 				},
-			},
-		},
-	})
-	const bassTeacher = await prisma.teacher.create({
-		select: { id: true },
-		data: {
-			name: faker.person.fullName(),
-			bio: faker.lorem.paragraph(1),
-			instruments: 'bass',
-			user: {
-				create: {
-					...createUser(),
-					image: { create: teacherImages[1] },
-				},
-			},
-		},
-	})
-	const keysTeacher = await prisma.teacher.create({
-		select: { id: true },
-		data: {
-			name: faker.person.fullName(),
-			bio: faker.lorem.paragraph(1),
-			instruments: 'keys',
-			user: {
-				create: {
-					...createUser(),
-					image: { create: teacherImages[2] },
-				},
-			},
-		},
-	})
-	const guitarTeacher = await prisma.teacher.create({
-		select: { id: true },
-		data: {
-			name: faker.person.fullName(),
-			bio: faker.lorem.paragraph(1),
-			instruments: 'guitar',
-			user: {
-				create: {
-					...createUser(),
-					image: { create: teacherImages[3] },
-				},
-			},
-		},
-	})
-	const vocalsTeacher = await prisma.teacher.create({
-		select: { id: true },
-		data: {
-			name: faker.person.fullName(),
-			bio: faker.lorem.paragraph(1),
-			instruments: 'vocals',
-			user: {
-				create: {
-					...createUser(),
-					image: { create: teacherImages[4] },
-				},
-			},
-		},
-	})
-	const teachers = [
-		drumTeacher,
-		bassTeacher,
-		guitarTeacher,
-		keysTeacher,
-		vocalsTeacher,
-	]
+			})
+		}),
+	)
 	console.timeEnd(`📚 Created ${totalTeachers} teachers...`)
 
 	const totalStudents = instrumentsArray.length + ageGroupArray.length
 	console.time(`🎓 Created ${totalStudents} students...`)
-	const studentImages = await getProfileImages({
-		profile: 'student',
-		amount: totalStudents,
-	})
-	const drumsStudents = await Promise.all(
-		Array.from({ length: ageGroupArray.length }, async (_, index) => {
-			const drummers = await prisma.student.create({
-				select: { id: true },
-				data: {
-					...createStudent({
-						ageGroup: ageGroupArray[index],
-						instrument: 'drums',
-					}),
-					image: { create: studentImages[index] },
-				},
-			})
-			return drummers
-		}),
-	)
-	const bassStudents = await Promise.all(
-		Array.from({ length: ageGroupArray.length }, async (_, index) => {
-			const bassists = await prisma.student.create({
-				select: { id: true },
-				data: {
-					...createStudent({
-						ageGroup: ageGroupArray[index],
-						instrument: 'bass',
-					}),
-					image: { create: studentImages[index + 4] },
-				},
-			})
-			return bassists
-		}),
-	)
-	const keysStudents = await Promise.all(
-		Array.from({ length: ageGroupArray.length }, async (_, index) => {
-			const keyboardists = await prisma.student.create({
-				select: { id: true },
-				data: {
-					...createStudent({
-						ageGroup: ageGroupArray[index],
-						instrument: 'keys',
-					}),
-					image: { create: studentImages[index + 8] },
-				},
-			})
-			return keyboardists
-		}),
-	)
-	const guitarStudents = await Promise.all(
-		Array.from({ length: ageGroupArray.length }, async (_, index) => {
-			const guitarrists = await prisma.student.create({
-				select: { id: true },
-				data: {
-					...createStudent({
-						ageGroup: ageGroupArray[index],
-						instrument: 'guitar',
-					}),
-					image: { create: studentImages[index + 12] },
-				},
-			})
-			return guitarrists
-		}),
-	)
-	const vocalStudents = await Promise.all(
-		Array.from({ length: ageGroupArray.length }, async (_, index) => {
-			const vocalists = await prisma.student.create({
-				select: { id: true },
-				data: {
-					...createStudent({
-						ageGroup: ageGroupArray[index],
-						instrument: 'vocals',
-					}),
-					image: { create: studentImages[index + 16] },
-				},
-			})
-			return vocalists
-		}),
-	)
-	const students = [
-		drumsStudents,
-		bassStudents,
-		keysStudents,
-		guitarStudents,
-		vocalStudents,
-	]
+	const ageGroupEntries = ageGroupArray.map(a => [a, []])
+	const students = Object.fromEntries(ageGroupEntries) as {
+		[K in AgeGroupType]: Pick<Student, 'id'>[]
+	}
+
+	for (let ageGroup in students) {
+		students[ageGroup] = await Promise.all(
+			Array.from({ length: instrumentsArray.length }, async (_, index) => {
+				const student = await createStudent({
+					ageGroup: ageGroup,
+					instrument: instrumentsArray[index],
+				})
+				return await prisma.student.create({
+					select: { id: true },
+					data: student,
+				})
+			}),
+		)
+	}
 	console.timeEnd(`🎓 Created ${totalStudents} students...`)
 
 	console.time(`🧂 Created 1 season...`)
@@ -246,12 +118,38 @@ async function seed() {
 	console.timeEnd(`🧂 Created 1 season...`)
 
 	const totalBands = ageGroupArray.length
+	const totalSongs = 5
+	const commentsPerSong = 5
 	console.time(`🎵 Created ${totalBands} bands...`)
+	console.time(`🎵 Created ${totalSongs} songs...`)
+	console.time(`🎵 Created ${commentsPerSong} comments per song...`)
 	Array.from({ length: totalBands }, async (_, index) => {
 		const ageGroup = ageGroupArray[index % ageGroupArray.length]
 		const times = getLessonSchedule()
 		const schedule = times[index % times.length]
-		const songs = await createSong(4)
+		const bandMembers = students[ageGroup]
+		const comments = Array.from({ length: commentsPerSong }, (_, index) => {
+			return {
+				content: faker.lorem.paragraphs(1),
+				authorId: teachers[index].id,
+				mentions: { connect: bandMembers[index] },
+			}
+		})
+
+		const songs = await Promise.all(
+			Array.from({ length: totalSongs }, async () => {
+				return {
+					...createSong(),
+					students: {
+						connect: bandMembers,
+					},
+					comments: {
+						create: comments,
+					},
+				}
+			}),
+		)
+
 		return await prisma.band.create({
 			select: { id: true },
 			data: {
@@ -265,184 +163,12 @@ async function seed() {
 						theme: faker.music.genre(),
 						seasonId: season.id,
 						songs: {
-							create: [
-								{
-									...songs[0],
-
-									students: {
-										connect: [
-											drumsStudents[index],
-											bassStudents[index],
-											keysStudents[index],
-											guitarStudents[index],
-											vocalStudents[index],
-										],
-									},
-									comments: {
-										create: [
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: drumTeacher.id,
-												mentions: { connect: drumsStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: bassTeacher.id,
-												mentions: { connect: bassStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: keysTeacher.id,
-												mentions: { connect: keysStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: guitarTeacher.id,
-												mentions: { connect: guitarStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: vocalsTeacher.id,
-												mentions: { connect: vocalStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: teachers[index % teachers.length].id,
-												mentions: {
-													connect: [
-														drumsStudents[index],
-														bassStudents[index],
-														keysStudents[index],
-														guitarStudents[index],
-														vocalStudents[index],
-													],
-												},
-											},
-										],
-									},
-								},
-								{
-									...songs[1],
-
-									students: {
-										connect: [
-											drumsStudents[index],
-											bassStudents[index],
-											keysStudents[index],
-											guitarStudents[index],
-											vocalStudents[index],
-										],
-									},
-									comments: {
-										create: [
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: drumTeacher.id,
-												mentions: { connect: drumsStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: bassTeacher.id,
-												mentions: { connect: bassStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: keysTeacher.id,
-												mentions: { connect: keysStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: guitarTeacher.id,
-												mentions: { connect: guitarStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: vocalsTeacher.id,
-												mentions: { connect: vocalStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: teachers[index % teachers.length].id,
-												mentions: {
-													connect: [
-														drumsStudents[index],
-														bassStudents[index],
-														keysStudents[index],
-														guitarStudents[index],
-														vocalStudents[index],
-													],
-												},
-											},
-										],
-									},
-								},
-								{
-									...songs[2],
-
-									students: {
-										connect: [
-											drumsStudents[index],
-											bassStudents[index],
-											keysStudents[index],
-											guitarStudents[index],
-											vocalStudents[index],
-										],
-									},
-									comments: {
-										create: [
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: drumTeacher.id,
-												mentions: { connect: drumsStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: bassTeacher.id,
-												mentions: { connect: bassStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: keysTeacher.id,
-												mentions: { connect: keysStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: guitarTeacher.id,
-												mentions: { connect: guitarStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: vocalsTeacher.id,
-												mentions: { connect: vocalStudents[index] },
-											},
-											{
-												content: faker.lorem.paragraphs(1),
-												authorId: teachers[index % teachers.length].id,
-												mentions: {
-													connect: [
-														drumsStudents[index],
-														bassStudents[index],
-														keysStudents[index],
-														guitarStudents[index],
-														vocalStudents[index],
-													],
-												},
-											},
-										],
-									},
-								},
-							],
+							create: songs,
 						},
 					},
 				},
 				students: {
-					connect: [
-						drumsStudents[index],
-						bassStudents[index],
-						keysStudents[index],
-						guitarStudents[index],
-						vocalStudents[index],
-					],
+					connect: bandMembers,
 				},
 				teachers: {
 					connect: teachers[index % teachers.length],
@@ -451,6 +177,8 @@ async function seed() {
 		})
 	})
 	console.timeEnd(`🎵 Created ${totalBands} bands...`)
+	console.timeEnd(`🎵 Created ${totalSongs} songs...`)
+	console.timeEnd(`🎵 Created ${commentsPerSong} comments per song...`)
 
 	console.time(`🐨 Created admin user "kody"`)
 
@@ -505,7 +233,6 @@ async function seed() {
 			connections: {
 				create: { providerName: 'github', providerId: githubUser.profile.id },
 			},
-			roles: { connect: [{ name: 'admin' }, { name: 'teacher' }] },
 		},
 	})
 	console.timeEnd(`🐨 Created admin user "kody"`)

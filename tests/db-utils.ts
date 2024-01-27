@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { faker } from '@faker-js/faker'
-import { Song, type PrismaClient } from '@prisma/client'
+import { type Song, type PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
 
@@ -8,7 +8,7 @@ const uniqueUsernameEnforcer = new UniqueEnforcer()
 export const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
 export const ageGroupArray = ['rookie', 'rock101', 'performance', 'adults']
 
-type InstrumentType = (typeof instrumentsArray)[number]
+export type InstrumentType = (typeof instrumentsArray)[number]
 type AgeGroupType = (typeof ageGroupArray)[number]
 
 export function randomInstrument() {
@@ -32,9 +32,10 @@ export function getLessonSchedule() {
 	return schedule
 }
 
-export function createUser() {
+export async function createUser() {
 	const firstName = faker.person.firstName()
 	const lastName = faker.person.lastName()
+	const [image] = await getProfileImages({ profile: 'teacher', amount: 1 })
 
 	const username = uniqueUsernameEnforcer
 		.enforce(() => {
@@ -53,31 +54,26 @@ export function createUser() {
 	return {
 		username,
 		email: `${username}@example.com`,
+		image: { create: image },
 	}
 }
 
-export async function createSong(
-	number: number,
-): Promise<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>[]> {
+export function createSong(): Omit<Song, 'id' | 'createdAt' | 'updatedAt'> {
 	const keys = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
-	return await Promise.all(
-		Array.from({ length: number }, () => {
-			return {
-				title: faker.music.songName(),
-				artist: faker.word.words({ count: { min: 1, max: 3 } }),
-				description: faker.lorem.paragraph({ min: 1, max: 3 }),
-				key: `${keys[faker.number.int({ min: 0, max: keys.length - 1 })]}${
-					Math.random() < 0.5 ? 'm' : ''
-				}`,
-				bpm: faker.number.int({ min: 60, max: 200 }).toString(),
-				lyrics: faker.lorem.paragraphs(4),
-			}
-		}),
-	)
+	return {
+		title: faker.music.songName(),
+		artist: faker.word.words({ count: { min: 1, max: 3 } }),
+		description: faker.lorem.paragraph({ min: 1, max: 3 }),
+		key: `${keys[faker.number.int({ min: 0, max: keys.length - 1 })]}${
+			Math.random() < 0.5 ? 'm' : ''
+		}`,
+		bpm: faker.number.int({ min: 60, max: 200 }).toString(),
+		lyrics: faker.lorem.paragraphs(4),
+	}
 }
 
-export function createStudent({
+export async function createStudent({
 	ageGroup,
 	instrument,
 }: {
@@ -86,6 +82,7 @@ export function createStudent({
 } = {}) {
 	let dob = faker.date.birthdate({ min: 6, mode: 'age' })
 	instrument ??= randomInstrument()
+	const [image] = await getProfileImages({ profile: 'student', amount: 1 })
 
 	if (ageGroup) {
 		switch (ageGroup) {
@@ -109,6 +106,7 @@ export function createStudent({
 		name: faker.person.fullName(),
 		instrument,
 		dob,
+		image: { create: image },
 	}
 }
 
@@ -176,10 +174,14 @@ export async function getProfileImages({
 	profile: string
 	amount: number
 }): Promise<Array<Awaited<ReturnType<typeof img>>>> {
+	const randomIndex: number[] = []
+	for (let index = 0; index < amount; index++) {
+		randomIndex.push(faker.number.int({ min: 0, max: 19 }))
+	}
 	const images = await Promise.all(
 		Array.from({ length: amount }, (_, index) =>
 			img({
-				filepath: `./tests/fixtures/images/${profile}/${index % 20}.jpeg`,
+				filepath: `./tests/fixtures/images/${profile}/${randomIndex[index]}.jpeg`,
 			}),
 		),
 	)
