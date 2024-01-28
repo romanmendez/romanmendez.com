@@ -13,7 +13,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
 	const user = await prisma.user.findFirst({
 		select: {
 			id: true,
-			name: true,
 			username: true,
 			createdAt: true,
 			image: { select: { id: true } },
@@ -31,7 +30,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
 export default function ProfileRoute() {
 	const data = useLoaderData<typeof loader>()
 	const user = data.user
-	const userDisplayName = user.name ?? user.username
 	const loggedInUser = useOptionalUser()
 	const isLoggedInUser = data.user.id === loggedInUser?.id
 
@@ -45,7 +43,7 @@ export default function ProfileRoute() {
 						<div className="relative">
 							<img
 								src={getUserImgSrc(data.user.image?.id)}
-								alt={userDisplayName}
+								alt={user.username}
 								className="h-52 w-52 rounded-full object-cover"
 							/>
 						</div>
@@ -56,7 +54,7 @@ export default function ProfileRoute() {
 
 				<div className="flex flex-col items-center">
 					<div className="flex flex-wrap items-center justify-center gap-4">
-						<h1 className="text-center text-h2">{userDisplayName}</h1>
+						<h1 className="text-center text-h2">{user.username}</h1>
 					</div>
 					<p className="mt-2 text-center text-muted-foreground">
 						Joined {data.userJoinedDisplay}
@@ -87,7 +85,7 @@ export default function ProfileRoute() {
 						) : (
 							<Button asChild>
 								<Link to="notes" prefetch="intent">
-									{userDisplayName}'s notes
+									{user.username}'s notes
 								</Link>
 							</Button>
 						)}
@@ -98,8 +96,8 @@ export default function ProfileRoute() {
 	)
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
-	const displayName = data?.user.name ?? params.username
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+	const displayName = data?.user.username
 	return [
 		{ title: `${displayName} | Epic Notes` },
 		{

@@ -218,7 +218,7 @@ function CommentHeader({
 		<h4 className="flex flex-col items-start text-lg font-medium leading-8 text-foreground md:flex-row lg:items-center">
 			<span className="flex-1">
 				{authorName}
-				<span className="text-base font-normal text-slate-500"> wants </span>
+				<span className="text-base font-normal text-slate-500"> says </span>
 				<span className="text-base font-normal ">
 					{mentions.map((m, i) => (
 						<>
@@ -235,7 +235,7 @@ function CommentHeader({
 						</>
 					))}
 				</span>
-				<span className="text-base font-normal text-slate-500"> to:</span>
+				<span className="text-base font-normal text-slate-500">:</span>
 			</span>
 			<span className="text-sm font-normal text-slate-400">
 				{' '}

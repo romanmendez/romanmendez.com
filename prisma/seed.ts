@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker'
+import { type Student } from '@prisma/client'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
 import {
-	AgeGroupType,
-	InstrumentType,
+	type AgeGroupType,
 	ageGroupArray,
 	cleanupDb,
 	createPassword,
@@ -15,9 +15,15 @@ import {
 	instrumentsArray,
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
-import { Student } from '@prisma/client'
 
-async function seedPermissionsAndRoles() {
+async function seed() {
+	console.log('🌱 Seeding...')
+	console.time(`🌱 Database has been seeded`)
+
+	console.time('🧹 Cleaned up the database...')
+	await cleanupDb(prisma)
+	console.timeEnd('🧹 Cleaned up the database...')
+
 	console.time('🔑 Created permissions...')
 	const entities = ['user', 'note']
 	const actions = ['create', 'read', 'update', 'delete']
@@ -54,16 +60,18 @@ async function seedPermissionsAndRoles() {
 			},
 		},
 	})
+	await prisma.role.create({
+		data: {
+			name: 'student',
+			permissions: {
+				connect: await prisma.permission.findMany({
+					select: { id: true },
+					where: { access: 'own' },
+				}),
+			},
+		},
+	})
 	console.timeEnd('👑 Created roles...')
-}
-
-async function seed() {
-	console.log('🌱 Seeding...')
-	console.time(`🌱 Database has been seeded`)
-
-	console.time('🧹 Cleaned up the database...')
-	await cleanupDb(prisma)
-	console.timeEnd('🧹 Cleaned up the database...')
 
 	const totalTeachers = instrumentsArray.length
 	console.time(`📚 Created ${totalTeachers} teachers...`)
@@ -77,7 +85,10 @@ async function seed() {
 					bio: faker.lorem.paragraph(1),
 					instruments: instrumentsArray[index],
 					user: {
-						create: user,
+						create: {
+							...user,
+							roles: { connect: { name: 'teacher' } },
+						},
 					},
 				},
 			})

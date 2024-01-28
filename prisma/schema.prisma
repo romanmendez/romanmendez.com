@@ -26,6 +26,18 @@ model User {
   connections Connection[]
   teacher     Teacher?
   student     Student?
+  admin       Admin?
+}
+
+model Admin {
+  id   String @id @default(cuid())
+  name String
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Teacher {

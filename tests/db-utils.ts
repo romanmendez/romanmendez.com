@@ -9,7 +9,8 @@ export const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
 export const ageGroupArray = ['rookie', 'rock101', 'performance', 'adults']
 
 export type InstrumentType = (typeof instrumentsArray)[number]
-type AgeGroupType = (typeof ageGroupArray)[number]
+export type AgeGroupType = (typeof ageGroupArray)[number]
+export type RoleType = 'teacher' | 'student' | 'admin'
 
 export function randomInstrument() {
 	return instrumentsArray[
