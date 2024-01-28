@@ -21,6 +21,7 @@ import {
 	useFetcher,
 	useFetchers,
 	useLoaderData,
+	useMatches,
 	useSubmit,
 } from '@remix-run/react'
 import { withSentry } from '@sentry/remix'
@@ -226,64 +227,52 @@ function Document({
 function App() {
 	const data = useLoaderData<typeof loader>()
 	const nonce = useNonce()
+	const matches = useMatches()
 	const user = useOptionalUser()
 	const theme = useTheme()
 	useToast(data.toast)
 
+	const home = '/'
+	const students = '/students'
+	const bands = '/bands'
+	const teachers = '/teachers'
+
+	console.log(matches.some(m => m.pathname.includes(students)))
 	return (
 		<Document nonce={nonce} theme={theme} env={data.ENV}>
-			<div className="flex h-screen flex-col justify-between">
-				<header className="container py-6">
-					<nav className="flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap md:gap-8">
-						<Logo />
-						<ul
-							className={
-								'flex w-full flex-wrap items-center justify-center gap-4 delay-200'
-							}
-						>
-							<li>
-								<Link
-									to={'/teachers'}
-									className="flex h-16 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
-								>
-									<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
-										Teachers
-									</span>
-								</Link>
-							</li>
-							<li>
-								<Link
-									to={'/students'}
-									className="flex h-16 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
-								>
-									<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
-										Students
-									</span>
-								</Link>
-							</li>
-							<li>
-								<Link
-									to={'/bands'}
-									className="flex h-16 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
-								>
-									<span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
-										Bands
-									</span>
-								</Link>
-							</li>
-						</ul>
-						<div className="flex items-center gap-10">
-							{user ? (
-								<UserDropdown />
-							) : (
-								<Button asChild variant="default" size="lg">
-									<Link to="/login">Log In</Link>
-								</Button>
-							)}
-						</div>
-					</nav>
-				</header>
-
+			<div className="fixed flex h-screen w-16 justify-center border-r border-solid border-muted-foreground/50 p-3 lg:w-64">
+				<div className="mt-5 flex flex-col space-y-8">
+					<Link to={home}>
+						{matches[matches.length - 1].pathname === home ? (
+							<Icon name="home-selected" fill="white" size="lg" />
+						) : (
+							<Icon name="home" fill="white" size="lg" />
+						)}
+					</Link>
+					<Link to={teachers}>
+						{matches.some(m => m.pathname.includes(teachers)) ? (
+							<Icon name="teacher-selected" fill="white" size="lg" />
+						) : (
+							<Icon name="teacher" fill="white" size="lg" />
+						)}
+					</Link>
+					<Link to={students}>
+						{matches.some(m => m.pathname.includes(students)) ? (
+							<Icon name="student-selected" fill="white" size="lg" />
+						) : (
+							<Icon name="student" fill="white" size="lg" />
+						)}
+					</Link>
+					<Link to={bands}>
+						{matches.some(m => m.pathname.includes(bands)) ? (
+							<Icon name="bands-selected" fill="white" size="lg" />
+						) : (
+							<Icon name="bands" fill="white" size="lg" />
+						)}
+					</Link>
+				</div>
+			</div>
+			<div className="flex h-screen w-full flex-col pl-16 lg:pl-64">
 				<div className="flex-1">
 					<Outlet />
 				</div>

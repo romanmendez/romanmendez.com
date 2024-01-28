@@ -41,15 +41,9 @@ export default function StudentRoute() {
 	})
 
 	return (
-		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
-			<h1 className="text-h1">Students</h1>
+		<div className="container mb-48 mt-5 flex flex-col items-center justify-center gap-6">
 			<div className="w-full max-w-[700px] ">
-				<SearchBar
-					status={data.status}
-					formAction={formAction}
-					autoFocus
-					autoSubmit
-				/>
+				<SearchBar formAction={formAction} autoFocus autoSubmit />
 			</div>
 			<main>
 				{data.status === 'idle' ? (

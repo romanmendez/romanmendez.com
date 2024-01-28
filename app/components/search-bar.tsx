@@ -1,18 +1,14 @@
 import { Form, useSearchParams, useSubmit } from '@remix-run/react'
 import { useId } from 'react'
-import { useDebounce, useIsPending } from '#app/utils/misc.tsx'
-import { Icon } from './ui/icon.tsx'
+import { useDebounce } from '#app/utils/misc.tsx'
 import { Input } from './ui/input.tsx'
 import { Label } from './ui/label.tsx'
-import { StatusButton } from './ui/status-button.tsx'
 
 export function SearchBar({
-	status,
 	autoFocus = false,
 	autoSubmit = false,
 	formAction,
 }: {
-	status: 'idle' | 'pending' | 'success' | 'error'
 	autoFocus?: boolean
 	autoSubmit?: boolean
 	formAction: string
@@ -20,11 +16,6 @@ export function SearchBar({
 	const id = useId()
 	const [searchParams] = useSearchParams()
 	const submit = useSubmit()
-	const isSubmitting = useIsPending({
-		formMethod: 'GET',
-		formAction,
-	})
-
 	const handleFormChange = useDebounce((form: HTMLFormElement) => {
 		submit(form)
 	}, 400)
@@ -33,7 +24,7 @@ export function SearchBar({
 		<Form
 			method="GET"
 			action={formAction}
-			className="flex flex-wrap items-center justify-center gap-2"
+			className="flex w-full flex-wrap items-center justify-center"
 			onChange={e => autoSubmit && handleFormChange(e.currentTarget)}
 		>
 			<div className="flex-1">
@@ -49,16 +40,6 @@ export function SearchBar({
 					className="w-full"
 					autoFocus={autoFocus}
 				/>
-			</div>
-			<div>
-				<StatusButton
-					type="submit"
-					status={isSubmitting ? 'pending' : status}
-					className="flex w-full items-center justify-center"
-				>
-					<Icon name="magnifying-glass" size="md" />
-					<span className="sr-only">Search</span>
-				</StatusButton>
 			</div>
 		</Form>
 	)

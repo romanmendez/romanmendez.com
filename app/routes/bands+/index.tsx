@@ -49,8 +49,7 @@ export default function StudentRoute() {
 	})
 
 	return (
-		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
-			<h1 className="text-h1">Bands</h1>
+		<div className="container mb-5 mt-5 flex flex-col items-center justify-center gap-6">
 			<div className="w-full max-w-[700px] ">
 				<SearchBar
 					status={data.status}

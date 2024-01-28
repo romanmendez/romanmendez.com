@@ -97,7 +97,7 @@ export default function SongRoute() {
 	}
 
 	return (
-		<div className="container mb-48 mt-16 flex flex-col items-center justify-center">
+		<div className="container mb-5 mt-5 flex flex-col items-center justify-center">
 			<div>
 				<div>
 					<h1 className="text-center text-h1">{song.title}</h1>

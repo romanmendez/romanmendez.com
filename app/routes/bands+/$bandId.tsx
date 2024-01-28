@@ -3,14 +3,12 @@ import { json, type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData, type MetaFunction } from '@remix-run/react'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
-import { Button } from '#app/components/ui/button.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import {
 	getStudentAge,
 	getStudentImgSrc,
 	getTimeAgo,
 } from '#app/utils/misc.tsx'
-import { useOptionalUser } from '#app/utils/user'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	console.log(params)
@@ -93,10 +91,9 @@ export async function loader({ params }: LoaderFunctionArgs) {
 export default function StudentProfileRoute() {
 	const data = useLoaderData<typeof loader>()
 	const band = data.band
-	const loggedInUser = useOptionalUser()
 
 	return (
-		<div className="container mb-48 mt-36 flex flex-col items-center justify-center">
+		<div className="container mb-5 mt-5 flex flex-col items-center justify-center">
 			<Spacer size="4xs" />
 
 			<div className="container flex flex-col items-center rounded-3xl bg-muted p-12">
@@ -135,15 +132,6 @@ export default function StudentProfileRoute() {
 							</div>
 						</Link>
 					))}
-					<div className="mt-10 flex gap-4">
-						{loggedInUser ? (
-							<Button asChild>
-								<Link to="/settings/profile" prefetch="intent">
-									Edit profile
-								</Link>
-							</Button>
-						) : null}
-					</div>
 				</div>
 				<ul className="divide-y divide-gray-100">
 					{band.students.map(student => (
