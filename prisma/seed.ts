@@ -3,8 +3,6 @@ import { type Student } from '@prisma/client'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
 import {
-	type AgeGroupType,
-	ageGroupArray,
 	cleanupDb,
 	createPassword,
 	createSong,
@@ -12,9 +10,13 @@ import {
 	createUser,
 	getLessonSchedule,
 	img,
-	instrumentsArray,
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
+
+export const instrumentsArray = ['drums', 'bass', 'keys', 'guitar', 'vocals']
+export const ageGroupArray = ['rookie', 'rock101', 'performance', 'adult']
+export type Instrument = (typeof instrumentsArray)[number]
+export type AgeGroup = (typeof ageGroupArray)[number]
 
 async function seed() {
 	console.log('🌱 Seeding...')
@@ -100,19 +102,20 @@ async function seed() {
 	console.time(`🎓 Created ${totalStudents} students...`)
 	const ageGroupEntries = ageGroupArray.map(a => [a, []])
 	const students = Object.fromEntries(ageGroupEntries) as {
-		[K in AgeGroupType]: Pick<Student, 'id'>[]
+		[K in AgeGroup]: Pick<Student, 'id'>[]
 	}
 
 	for (let ageGroup in students) {
-		students[ageGroup] = await Promise.all(
+		const agegroupKey = ageGroup as AgeGroup
+		students[agegroupKey] = await Promise.all(
 			Array.from({ length: instrumentsArray.length }, async (_, index) => {
 				const student = await createStudent({
-					ageGroup: ageGroup,
+					ageGroup: agegroupKey,
 					instrument: instrumentsArray[index],
 				})
 				return await prisma.student.create({
 					select: { id: true },
-					data: student,
+					data: { ...student, teacherId: teachers[index].id },
 				})
 			}),
 		)

@@ -228,50 +228,40 @@ function App() {
 	const data = useLoaderData<typeof loader>()
 	const nonce = useNonce()
 	const matches = useMatches()
-	const user = useOptionalUser()
 	const theme = useTheme()
 	useToast(data.toast)
 
-	const home = '/'
-	const students = '/students'
-	const bands = '/bands'
-	const teachers = '/teachers'
+	const routes = ['home', 'teachers', 'students', 'songs', 'add'] as const
 
-	console.log(matches.some(m => m.pathname.includes(students)))
 	return (
 		<Document nonce={nonce} theme={theme} env={data.ENV}>
-			<div className="fixed flex h-screen w-16 justify-center border-r border-solid border-muted-foreground/50 p-3 lg:w-64">
-				<div className="mt-5 flex flex-col space-y-8">
-					<Link to={home}>
-						{matches[matches.length - 1].pathname === home ? (
-							<Icon name="home-selected" fill="white" size="lg" />
-						) : (
-							<Icon name="home" fill="white" size="lg" />
-						)}
-					</Link>
-					<Link to={teachers}>
-						{matches.some(m => m.pathname.includes(teachers)) ? (
-							<Icon name="teacher-selected" fill="white" size="lg" />
-						) : (
-							<Icon name="teacher" fill="white" size="lg" />
-						)}
-					</Link>
-					<Link to={students}>
-						{matches.some(m => m.pathname.includes(students)) ? (
-							<Icon name="student-selected" fill="white" size="lg" />
-						) : (
-							<Icon name="student" fill="white" size="lg" />
-						)}
-					</Link>
-					<Link to={bands}>
-						{matches.some(m => m.pathname.includes(bands)) ? (
-							<Icon name="bands-selected" fill="white" size="lg" />
-						) : (
-							<Icon name="bands" fill="white" size="lg" />
-						)}
-					</Link>
-				</div>
-			</div>
+			<aside className="fixed flex h-screen w-16 justify-center  p-3 lg:w-64">
+				<ul className="mt-5 flex flex-col space-y-8">
+					{routes.map(route => (
+						<Link
+							key={route}
+							to={`/${route}`}
+							className="group flex items-center rounded-lg p-2 text-gray-900 dark:text-white"
+						>
+							{matches[matches.length - 1].pathname === `/${route}` ? (
+								<Icon
+									name={`${route}-selected`}
+									className="h-5 w-5 text-gray-500 transition duration-75 group-hover:fill-white group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+									fill="white"
+									size="lg"
+								/>
+							) : (
+								<Icon
+									name={route}
+									fill="white"
+									size="lg"
+									className="fill-muted-foreground group-hover:fill-foreground"
+								/>
+							)}
+						</Link>
+					))}
+				</ul>
+			</aside>
 			<div className="flex h-screen w-full flex-col pl-16 lg:pl-64">
 				<div className="flex-1">
 					<Outlet />

@@ -3,14 +3,9 @@ import { faker } from '@faker-js/faker'
 import { type Song, type PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
+import { type AgeGroup, type Instrument, instrumentsArray } from '#prisma/seed'
 
 const uniqueUsernameEnforcer = new UniqueEnforcer()
-export const instrumentsArray = ['vocals', 'keys', 'guitar', 'bass', 'drums']
-export const ageGroupArray = ['rookie', 'rock101', 'performance', 'adults']
-
-export type InstrumentType = (typeof instrumentsArray)[number]
-export type AgeGroupType = (typeof ageGroupArray)[number]
-export type RoleType = 'teacher' | 'student' | 'admin'
 
 export function randomInstrument() {
 	return instrumentsArray[
@@ -78,8 +73,8 @@ export async function createStudent({
 	ageGroup,
 	instrument,
 }: {
-	instrument?: InstrumentType
-	ageGroup?: AgeGroupType
+	instrument?: Instrument
+	ageGroup?: AgeGroup
 } = {}) {
 	let dob = faker.date.birthdate({ min: 6, mode: 'age' })
 	instrument ??= randomInstrument()

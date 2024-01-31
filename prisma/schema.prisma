@@ -68,7 +68,9 @@ model Student {
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String? @unique
 
-  teachers     Teacher[]
+  teacher   Teacher @relation(fields: [teacherId], references: [id])
+  teacherId String
+
   songs        Song[]
   songComments SongComment[]
 
