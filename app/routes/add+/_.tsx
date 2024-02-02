@@ -31,7 +31,7 @@ export default function AddRoute() {
 									}
 								>
 									<span className="w-full overflow-hidden text-ellipsis text-center text-body-xs ">
-										{selection.charAt(0).toUpperCase() + selection.substr(1)}
+										{selection.charAt(0).toUpperCase() + selection.slice(1)}
 									</span>
 								</NavLink>
 							</li>

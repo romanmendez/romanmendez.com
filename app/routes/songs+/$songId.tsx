@@ -1,5 +1,10 @@
-import { conform, useForm } from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
+import {
+	getFormProps,
+	getInputProps,
+	getTextareaProps,
+	useForm,
+} from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
 import {
 	type ActionFunctionArgs,
@@ -15,13 +20,25 @@ import {
 } from '@remix-run/react'
 import { useState } from 'react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
+import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { ErrorList, TextareaField } from '#app/components/forms'
 import { StatusButton } from '#app/components/ui/status-button'
-import { CommentSchema, validateComment } from '#app/utils/comments.server'
+import { requireUserId } from '#app/utils/auth.server'
+import { validateCSRF } from '#app/utils/csrf.server'
 import { prisma } from '#app/utils/db.server.ts'
 import { getTimeAgo, getUserImgSrc, useIsPending } from '#app/utils/misc'
 import { useOptionalUser } from '#app/utils/user'
+
+const CommentSchema = z.object({
+	id: z.string().optional(),
+	teacherId: z.string(),
+	songId: z.string(),
+	mentions: z.string(),
+	content: z
+		.string({ required_error: 'Please enter a comment before submitting.' })
+		.min(1),
+})
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const song = await prisma.song.findFirst({
@@ -68,25 +85,80 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-	return await validateComment({ request })
+	const userId = await requireUserId(request)
+	const formData = await request.formData()
+
+	await validateCSRF(formData, request.headers)
+
+	const submission = await parseWithZod(formData, {
+		schema: CommentSchema.superRefine(async (data, ctx) => {
+			if (!data.id) return
+
+			const comment = await prisma.songComment.findUnique({
+				select: { id: true },
+				where: { id: data.id, authorId: userId },
+			})
+			if (!comment) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Note not found',
+				})
+			}
+		}).transform(({ mentions, ...data }) => {
+			const mentionsArray = mentions.split(',').map(m => ({ id: m }))
+			return {
+				...data,
+				mentions: mentionsArray,
+			}
+		}),
+		async: true,
+	})
+
+	if (submission.status !== 'success') {
+		return json(
+			{ result: submission.reply() },
+			{ status: submission.status === 'error' ? 400 : 200 },
+		)
+	}
+
+	const {
+		id: commentId,
+		content,
+		teacherId,
+		songId,
+		mentions,
+	} = submission.value
+
+	await prisma.songComment.upsert({
+		where: { id: commentId ?? '__new_note__' },
+		create: {
+			mentions: { connect: mentions },
+			authorId: teacherId,
+			songId,
+			content,
+		},
+		update: {
+			content,
+			mentions: { connect: mentions },
+		},
+	})
+	return json({ result: submission.reply() })
 }
 
 export default function SongRoute() {
 	const [mentions, setMentions] = useState<Set<string>>(new Set())
 	const data = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const song = data.song
-	const comments = data.song.comments
 	const loggedInUser = useOptionalUser()
 	const isTeacher = Boolean(loggedInUser?.teacher)
 	const isPending = useIsPending()
 
 	const [form, fields] = useForm({
 		id: 'comment-editor',
-		constraint: getFieldsetConstraint(CommentSchema),
-		lastSubmission: actionData?.submission,
+		constraint: getZodConstraint(CommentSchema),
+		lastResult: actionData?.result,
 		onValidate({ formData }) {
-			return parse(formData, { schema: CommentSchema })
+			return parseWithZod(formData, { schema: CommentSchema })
 		},
 	})
 
@@ -100,8 +172,8 @@ export default function SongRoute() {
 		<div className="container mb-5 mt-5 flex flex-col items-center justify-center">
 			<div>
 				<div>
-					<h1 className="text-center text-h1">{song.title}</h1>
-					<h2 className="text-center text-h2">{song.artist}</h2>
+					<h1 className="text-center text-h1">{data.song.title}</h1>
+					<h2 className="text-center text-h2">{data.song.artist}</h2>
 				</div>
 				<p className="mt-2 text-center text-muted-foreground">
 					Added {data.song.createdAt}
@@ -109,36 +181,33 @@ export default function SongRoute() {
 			</div>
 			{isTeacher ? (
 				<Form
-					key={song.id}
+					key={data.song.id}
 					method="POST"
 					className="mb-6 mt-4 w-full"
-					{...form.props}
+					{...getFormProps(form)}
 				>
 					<AuthenticityTokenInput />
 					<button type="submit" className="hidden" />
 					<input
-						type="hidden"
-						{...conform.input(fields.teacherId)}
+						{...getInputProps(fields.teacherId, { type: 'hidden' })}
 						value={loggedInUser?.teacher?.id}
 					/>
 					<input
-						type="hidden"
-						{...conform.input(fields.mentions)}
+						{...getInputProps(fields.mentions, { type: 'hidden' })}
 						value={Array.from(mentions).join(',')}
 					/>
 					<input
-						type="hidden"
-						{...conform.input(fields.songId)}
-						value={song.id}
+						{...getInputProps(fields.songId, { type: 'hidden' })}
+						value={data.song.id}
 					/>
 					<div className="mb-4 rounded-lg rounded-t-lg border border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
 						<TextareaField
 							className="w-full border-0 px-0 text-sm text-gray-900 focus:outline-none focus:ring-0 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
 							labelProps={{ children: 'Comment' }}
-							textareaProps={{ ...conform.textarea(fields.content) }}
+							textareaProps={{ ...getTextareaProps(fields.content) }}
 							errors={fields.content.errors}
 						/>
-						{song.students.map(student => (
+						{data.song.students.map(student => (
 							<button
 								type="button"
 								key={student.id}
@@ -159,13 +228,13 @@ export default function SongRoute() {
 					<ErrorList id={form.errorId} errors={form.errors} />
 				</Form>
 			) : null}
-			{comments.length ? (
+			{data.song.comments.length ? (
 				<ul
 					aria-label="User feed"
 					role="feed"
 					className="relative flex flex-col gap-12 py-12 pl-8 before:absolute before:left-8 before:top-0 before:h-full before:-translate-x-1/2 before:border before:border-dashed before:border-slate-200 after:absolute after:bottom-6 after:left-8 after:top-6 after:-translate-x-1/2 after:border after:border-slate-200 "
 				>
-					{comments.map(comment => (
+					{data.song.comments.map(comment => (
 						<li key={comment.id} role="article" className="relative pl-8 ">
 							<div className="flex flex-1 flex-col">
 								<Link to={`/teachers/${comment.author.id}`}>
@@ -221,9 +290,8 @@ function CommentHeader({
 				<span className="text-base font-normal text-slate-500"> says </span>
 				<span className="text-base font-normal ">
 					{mentions.map((m, i) => (
-						<>
+						<div key={m.id}>
 							<Link
-								key={m.id}
 								to={`/students/${m.id}`}
 								className="text-muted-foreground hover:underline"
 							>
@@ -232,7 +300,7 @@ function CommentHeader({
 							<span className="text-base font-normal text-slate-500">
 								{formatMentions(i)}
 							</span>
-						</>
+						</div>
 					))}
 				</span>
 				<span className="text-base font-normal text-slate-500">:</span>

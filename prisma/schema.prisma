@@ -63,6 +63,7 @@ model Student {
   name       String
   dob        DateTime
   instrument String
+  bio        String?
   image      StudentImage?
 
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)

@@ -1,5 +1,4 @@
 import { useForm } from '@conform-to/react'
-import { parse } from '@conform-to/zod'
 import { cssBundleHref } from '@remix-run/css-bundle'
 import {
 	json,
@@ -56,7 +55,8 @@ import { useRequestInfo } from './utils/request-info.ts'
 import { type Theme, setTheme, getTheme } from './utils/theme.server.ts'
 import { makeTimings, time } from './utils/timing.server.ts'
 import { getToast } from './utils/toast.server.ts'
-import { useOptionalUser, useUser } from './utils/user.ts'
+import { useUser } from './utils/user.ts'
+import { parseWithZod } from '@conform-to/zod'
 
 export const links: LinksFunction = () => {
 	return [
@@ -171,21 +171,22 @@ const ThemeFormSchema = z.object({
 
 export async function action({ request }: ActionFunctionArgs) {
 	const formData = await request.formData()
-	const submission = parse(formData, {
+	const submission = parseWithZod(formData, {
 		schema: ThemeFormSchema,
 	})
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
+	if (submission.status !== 'success') {
+		return json(
+			{ result: submission.reply() },
+			{ status: submission.status === 'error' ? 400 : 200 },
+		)
 	}
-	if (!submission.value) {
-		return json({ status: 'error', submission } as const, { status: 400 })
-	}
+
 	const { theme } = submission.value
 
 	const responseInit = {
 		headers: { 'set-cookie': setTheme(theme) },
 	}
-	return json({ success: true, submission }, responseInit)
+	return json({ result: submission.reply() }, responseInit)
 }
 
 function Document({

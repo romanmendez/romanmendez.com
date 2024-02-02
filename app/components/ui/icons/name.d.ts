@@ -7,6 +7,8 @@ export type IconName =
 	| 'bands'
 	| 'home-selected'
 	| 'home'
+	| 'remove-selected'
+	| 'remove'
 	| 'smile'
 	| 'songs-selected'
 	| 'songs'

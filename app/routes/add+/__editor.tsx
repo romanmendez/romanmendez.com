@@ -1,12 +1,21 @@
 import {
-	conform,
-	useFieldset,
+	type FieldMetadata,
 	useForm,
-	type FieldConfig,
+	getInputProps,
+	getTextareaProps,
+	getFormProps,
+	getFieldsetProps,
+	FormProvider,
+	getSelectProps,
 } from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { createId as cuid } from '@paralleldrive/cuid2'
-import { type Student, type StudentImage } from '@prisma/client'
+import {
+	type Teacher,
+	type Student,
+	type StudentImage,
+	type Band,
+} from '@prisma/client'
 import {
 	unstable_createMemoryUploadHandler as createMemoryUploadHandler,
 	json,
@@ -20,16 +29,23 @@ import { useRef, useState } from 'react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
-import { ErrorList, Field, Select } from '#app/components/forms.tsx'
+import {
+	ErrorList,
+	Field,
+	Select,
+	TextareaField,
+} from '#app/components/forms.tsx'
+import { Button } from '#app/components/ui/button'
 import { Icon } from '#app/components/ui/icon.tsx'
 import { Label } from '#app/components/ui/label.tsx'
 import { StatusButton } from '#app/components/ui/status-button'
 import { validateCSRF } from '#app/utils/csrf.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
-import { loader } from './student'
+import { type loader } from './$form'
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 3 // 3MB
+const instruments = ['drums', 'bass', 'keys', 'guitar', 'vocals'] as const
 
 const ImageSchema = z.object({
 	id: z.string().optional(),
@@ -60,7 +76,8 @@ const StudentEditorSchema = z.object({
 	id: z.string().optional(),
 	name: z.string(),
 	dob: z.date(),
-	instrument: z.enum(['drums', 'bass', 'keys', 'guitar', 'vocals']),
+	bio: z.string().optional(),
+	instrument: z.enum(instruments),
 	teacherId: z.string(),
 	bandId: z.string().optional(),
 	image: ImageSchema,
@@ -73,7 +90,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	)
 	await validateCSRF(formData, request.headers)
 
-	const submission = await parse(formData, {
+	const submission = await parseWithZod(formData, {
 		schema: StudentEditorSchema.superRefine(async (data, ctx) => {
 			if (!data.id) return
 
@@ -117,12 +134,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	if (submission.intent !== 'submit') {
-		return json({ submission } as const)
-	}
-
-	if (!submission.value) {
-		return json({ submission } as const, { status: 400 })
+	if (submission.status !== 'success') {
+		return json(
+			{ result: submission.reply() },
+			{ status: submission.status === 'error' ? 400 : 200 },
+		)
 	}
 
 	const {
@@ -172,7 +188,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	return redirect(`/students/${updateStudent.id}`)
 }
 
-export function StudentEditor({
+export function StudentForm({
 	student,
 }: {
 	student?: SerializeFrom<
@@ -187,11 +203,11 @@ export function StudentEditor({
 
 	const [form, fields] = useForm({
 		id: 'student-editor',
-		constraint: getFieldsetConstraint(StudentEditorSchema),
-		lastSubmission: actionData?.submission,
+		constraint: getZodConstraint(StudentEditorSchema),
+		lastResult: actionData?.result,
 		onValidate({ formData }) {
 			console.log(formData.get('teacherId'))
-			return parse(formData, { schema: StudentEditorSchema })
+			return parseWithZod(formData, { schema: StudentEditorSchema })
 		},
 		defaultValue: {
 			name: student?.name ?? '',
@@ -208,7 +224,7 @@ export function StudentEditor({
 			<Form
 				method="POST"
 				className="flex h-full w-full flex-col gap-y-4 overflow-y-auto overflow-x-hidden px-10 pb-28 pt-12"
-				{...form.props}
+				{...getFormProps(form)}
 				encType="multipart/form-data"
 			>
 				<AuthenticityTokenInput />
@@ -222,16 +238,23 @@ export function StudentEditor({
 						labelProps={{ children: 'Name' }}
 						inputProps={{
 							autoFocus: true,
-							...conform.input(fields.name, { ariaAttributes: true }),
+							...getInputProps(fields.name, { type: 'text' }),
 						}}
 						errors={fields.name.errors}
+					/>
+					<TextareaField
+						labelProps={{ children: 'Bio' }}
+						textareaProps={{
+							autoFocus: true,
+							...getInputProps(fields.bio, { type: 'text' }),
+						}}
+						errors={fields.bio.errors}
 					/>
 					<Field
 						labelProps={{ children: 'Date of birth' }}
 						inputProps={{
 							autoFocus: true,
-							type: 'date',
-							...conform.input(fields.dob, { ariaAttributes: true }),
+							...getInputProps(fields.dob, { type: 'date' }),
 						}}
 						errors={fields.dob.errors}
 					/>
@@ -239,8 +262,7 @@ export function StudentEditor({
 						labelProps={{ children: 'Instrument' }}
 						selectProps={{
 							autoFocus: true,
-							type: 'text',
-							...conform.input(fields.instrument, { ariaAttributes: true }),
+							...getInputProps(fields.instrument, { type: 'text' }),
 						}}
 						className="bg-background"
 						options={instruments}
@@ -250,8 +272,7 @@ export function StudentEditor({
 						labelProps={{ children: 'Teacher' }}
 						selectProps={{
 							autoFocus: true,
-							type: 'text',
-							...conform.input(fields.teacherId, { ariaAttributes: true }),
+							...getInputProps(fields.teacherId, { type: 'text' }),
 						}}
 						className="bg-background"
 						options={teachers}
@@ -261,13 +282,141 @@ export function StudentEditor({
 						labelProps={{ children: 'Band' }}
 						selectProps={{
 							autoFocus: true,
-							type: 'text',
-							...conform.input(fields.bandId, { ariaAttributes: true }),
+							...getInputProps(fields.bandId, { type: 'text' }),
 						}}
 						className="bg-background"
 						options={bands}
 						errors={fields.bandId.errors}
 					/>
+
+					<StatusButton
+						type="submit"
+						disabled={isPending}
+						status={isPending ? 'pending' : 'idle'}
+					>
+						Add Student
+					</StatusButton>
+				</div>
+				<ErrorList id={form.errorId} errors={form.errors} />
+			</Form>
+		</div>
+	)
+}
+
+const TeacherEditorSchema = z.object({
+	id: z.string().optional(),
+	name: z.string(),
+	instruments: z.array(z.enum(instruments)),
+	bio: z.string().optional(),
+	studentIds: z.array(z.string()),
+	bandIds: z.array(z.string()),
+})
+
+export function TeacherForm({
+	teacher,
+}: {
+	teacher?: SerializeFrom<
+		Omit<Teacher, 'updatedAt' | 'createdAt'> & {
+			students: Pick<Student, 'id'>[]
+		} & { bands: Pick<Band, 'id'>[] }
+	>
+}) {
+	const { bands, instruments } = useLoaderData<typeof loader>()
+	const actionData = useActionData<typeof action>()
+	const isPending = useIsPending()
+	const teacherInstruments = teacher?.instruments.split(',') || []
+	const studentIds = teacher?.students.map(s => s.id)
+	const bandIds = teacher?.bands.map(b => b.id)
+
+	const [form, fields] = useForm({
+		id: 'teacher-editor',
+		constraint: getZodConstraint(TeacherEditorSchema),
+		lastResult: actionData?.result,
+		onValidate({ formData }) {
+			console.log(formData.get('teacherId'))
+			return parseWithZod(formData, { schema: TeacherEditorSchema })
+		},
+		defaultValue: {
+			name: teacher?.name ?? '',
+			instruments: teacherInstruments ?? [],
+			bio: teacher?.bio ?? '',
+			studentIds,
+			bandIds,
+		},
+	})
+
+	const instrumetsList = fields.instruments.getFieldList()
+
+	return (
+		<div className="container mb-48 mt-5 flex flex-col items-center justify-center gap-6">
+			<Form
+				method="POST"
+				className="flex h-full w-full flex-col gap-y-4 overflow-y-auto overflow-x-hidden px-10 pb-28 pt-12"
+				{...getFormProps(form)}
+				encType="multipart/form-data"
+			>
+				<AuthenticityTokenInput />
+				<button type="submit" className="hidden" />
+				{teacher ? <input type="hidden" name="id" value={teacher.id} /> : null}
+				<div className="flex flex-col gap-1">
+					<Field
+						labelProps={{ children: 'Name' }}
+						inputProps={{
+							autoFocus: true,
+							...getInputProps(fields.name, { type: 'text' }),
+						}}
+						errors={fields.name.errors}
+					/>
+					<TextareaField
+						labelProps={{ children: 'Bio' }}
+						textareaProps={{
+							autoFocus: true,
+							...getInputProps(fields.bio, { type: 'text' }),
+						}}
+						errors={fields.bio.errors}
+					/>
+					<ul className="flex flex-col gap-4">
+						{teacherInstruments.map((instrument, index) => {
+							return (
+								<li
+									key={instrument}
+									className="relative border-b-2 border-muted-foreground"
+								>
+									<button
+										className="absolute right-0 top-0 text-foreground-destructive"
+										{...form.remove.getButtonProps({
+											name: fields.instruments.name,
+											index,
+										})}
+									>
+										<span aria-hidden>
+											<Icon name="remove" />
+										</span>{' '}
+										<span className="sr-only">Remove image {index + 1}</span>
+									</button>
+									<Select
+										labelProps={{ children: 'Instruments' }}
+										selectProps={{
+											autoFocus: true,
+											...getSelectProps(fields.instruments),
+										}}
+										className="bg-background"
+										options={instruments}
+										errors={fields.instruments.errors}
+									/>
+								</li>
+							)
+						})}
+					</ul>
+					<Button
+						className="mt-3"
+						{...form.insert.getButtonProps({ name: fields.instruments.name })}
+					>
+						<span aria-hidden>
+							<Icon name="add">Image</Icon>
+						</span>{' '}
+						<span className="sr-only">Add image</span>
+					</Button>
 
 					<StatusButton
 						type="submit"

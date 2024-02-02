@@ -1,5 +1,5 @@
-import { conform, useForm } from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
+import { getFormProps, getInputProps, useForm } from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
 import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import {
@@ -60,7 +60,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		where: { id: userId },
 		select: {
 			id: true,
-			name: true,
 			username: true,
 			image: { select: { id: true } },
 		},
@@ -77,7 +76,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	)
 	await validateCSRF(formData, request.headers)
 
-	const submission = await parse(formData, {
+	const submission = await parseWithZod(formData, {
 		schema: PhotoFormSchema.transform(async data => {
 			if (data.intent === 'delete') return { intent: 'delete' }
 			if (data.photoFile.size <= 0) return z.NEVER
@@ -92,11 +91,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
-	}
-	if (!submission.value) {
-		return json({ status: 'error', submission } as const, { status: 400 })
+	if (submission.status !== 'success') {
+		return json(
+			{ result: submission.reply() },
+			{ status: submission.status === 'error' ? 400 : 200 },
+		)
 	}
 
 	const { image, intent } = submission.value
@@ -127,22 +126,17 @@ export default function PhotoRoute() {
 
 	const [form, fields] = useForm({
 		id: 'profile-photo',
-		constraint: getFieldsetConstraint(PhotoFormSchema),
-		lastSubmission: actionData?.submission,
+		constraint: getZodConstraint(PhotoFormSchema),
+		lastResult: actionData?.result,
 		onValidate({ formData }) {
-			// otherwise, the best error zod gives us is "Invalid input" which is not
-			// enough
-			if (formData.get('intent') === 'delete') {
-				return parse(formData, { schema: DeleteImageSchema })
-			}
-			return parse(formData, { schema: NewImageSchema })
+			return parseWithZod(formData, { schema: PhotoFormSchema })
 		},
 		shouldRevalidate: 'onBlur',
 	})
 
 	const isPending = useIsPending()
 	const pendingIntent = isPending ? navigation.formData?.get('intent') : null
-	const lastSubmissionIntent = actionData?.submission.value?.intent
+	const lastSubmissionIntent = fields.intent.value
 
 	const [newImageSrc, setNewImageSrc] = useState<string | null>(null)
 
@@ -153,7 +147,7 @@ export default function PhotoRoute() {
 				encType="multipart/form-data"
 				className="flex flex-col items-center justify-center gap-10"
 				onReset={() => setNewImageSrc(null)}
-				{...form.props}
+				{...getFormProps(form)}
 			>
 				<AuthenticityTokenInput />
 				<img
@@ -161,7 +155,7 @@ export default function PhotoRoute() {
 						newImageSrc ?? (data.user ? getUserImgSrc(data.user.image?.id) : '')
 					}
 					className="h-52 w-52 rounded-full object-cover"
-					alt={data.user?.name ?? data.user?.username}
+					alt={data.user?.username}
 				/>
 				<ErrorList errors={fields.photoFile.errors} id={fields.photoFile.id} />
 				<div className="flex gap-4">
@@ -172,7 +166,7 @@ export default function PhotoRoute() {
 						an image has been selected). Progressive enhancement FTW!
 					*/}
 					<input
-						{...conform.input(fields.photoFile, { type: 'file' })}
+						{...getInputProps(fields.photoFile, { type: 'file' })}
 						accept="image/*"
 						className="peer sr-only"
 						required
@@ -205,7 +199,7 @@ export default function PhotoRoute() {
 							pendingIntent === 'submit'
 								? 'pending'
 								: lastSubmissionIntent === 'submit'
-								  ? actionData?.status ?? 'idle'
+								  ? form.status ?? 'idle'
 								  : 'idle'
 						}
 					>
@@ -231,7 +225,7 @@ export default function PhotoRoute() {
 								pendingIntent === 'delete'
 									? 'pending'
 									: lastSubmissionIntent === 'delete'
-									  ? actionData?.status ?? 'idle'
+									  ? form.status ?? 'idle'
 									  : 'idle'
 							}
 						>

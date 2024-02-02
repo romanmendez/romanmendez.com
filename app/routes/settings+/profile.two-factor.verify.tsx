@@ -1,5 +1,5 @@
-import { conform, useForm } from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
+import { getFormProps, getInputProps, useForm } from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import {
 	json,
@@ -80,7 +80,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const formData = await request.formData()
 	await validateCSRF(formData, request.headers)
 
-	const submission = await parse(formData, {
+	const submission = await parseWithZod(formData, {
 		schema: () =>
 			ActionSchema.superRefine(async (data, ctx) => {
 				if (data.intent === 'cancel') return null
@@ -101,11 +101,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
-	}
-	if (!submission.value) {
-		return json({ status: 'error', submission } as const, { status: 400 })
+	if (submission.status !== 'success') {
+		return json(
+			{ result: submission.reply() },
+			{ status: submission.status === 'error' ? 400 : 200 },
+		)
 	}
 
 	switch (submission.value.intent) {
@@ -138,21 +138,16 @@ export default function TwoFactorRoute() {
 
 	const isPending = useIsPending()
 	const pendingIntent = isPending ? navigation.formData?.get('intent') : null
-	const lastSubmissionIntent = actionData?.submission.value?.intent
 
 	const [form, fields] = useForm({
 		id: 'verify-form',
-		constraint: getFieldsetConstraint(ActionSchema),
-		lastSubmission: actionData?.submission,
+		constraint: getZodConstraint(ActionSchema),
+		lastResult: actionData?.result,
 		onValidate({ formData }) {
-			// otherwise, the best error zod gives us is "Invalid input" which is not
-			// enough
-			if (formData.get('intent') === 'cancel') {
-				return parse(formData, { schema: CancelSchema })
-			}
-			return parse(formData, { schema: VerifySchema })
+			return parseWithZod(formData, { schema: ActionSchema })
 		},
 	})
+	const lastSubmissionIntent = fields.intent.value
 
 	return (
 		<div>
@@ -179,7 +174,7 @@ export default function TwoFactorRoute() {
 					lose access to your account.
 				</p>
 				<div className="flex w-full max-w-xs flex-col justify-center gap-4">
-					<Form method="POST" {...form.props} className="flex-1">
+					<Form method="POST" {...getFormProps(form)} className="flex-1">
 						<AuthenticityTokenInput />
 						<Field
 							labelProps={{
@@ -187,7 +182,7 @@ export default function TwoFactorRoute() {
 								children: 'Code',
 							}}
 							inputProps={{
-								...conform.input(fields.code),
+								...getInputProps(fields.code, { type: 'text' }),
 								autoFocus: true,
 								autoComplete: 'one-time-code',
 							}}
@@ -205,7 +200,7 @@ export default function TwoFactorRoute() {
 									pendingIntent === 'verify'
 										? 'pending'
 										: lastSubmissionIntent === 'verify'
-										  ? actionData?.status ?? 'idle'
+										  ? form.status ?? 'idle'
 										  : 'idle'
 								}
 								type="submit"
@@ -221,7 +216,7 @@ export default function TwoFactorRoute() {
 									pendingIntent === 'cancel'
 										? 'pending'
 										: lastSubmissionIntent === 'cancel'
-										  ? actionData?.status ?? 'idle'
+										  ? form.status ?? 'idle'
 										  : 'idle'
 								}
 								type="submit"

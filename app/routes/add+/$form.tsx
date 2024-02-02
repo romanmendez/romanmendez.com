@@ -1,7 +1,7 @@
-import { LoaderFunctionArgs, json } from '@remix-run/server-runtime'
-import { prisma } from '#app/utils/db.server'
-import { StudentEditor, action } from './__editor'
 import { useLoaderData } from '@remix-run/react'
+import { type LoaderFunctionArgs, json } from '@remix-run/server-runtime'
+import { prisma } from '#app/utils/db.server'
+import { StudentForm, TeacherForm, action } from './__editor'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const form = params.form
@@ -49,6 +49,8 @@ export default function AddStudentRoute() {
 	const data = useLoaderData<typeof loader>()
 	switch (data.form) {
 		case 'student':
-			return <StudentEditor />
+			return <StudentForm />
+		case 'teacher':
+			return <TeacherForm />
 	}
 }
