@@ -1,13 +1,8 @@
 import { invariantResponse } from '@epic-web/invariant'
-import {
-	type ActionFunctionArgs,
-	json,
-	type LoaderFunctionArgs,
-} from '@remix-run/node'
+import { json, type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData, type MetaFunction } from '@remix-run/react'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
-import { validateComment } from '#app/utils/comments.server'
 import { prisma } from '#app/utils/db.server.ts'
 import {
 	getStudentAge,
@@ -69,10 +64,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		},
 		userJoinedDisplay: student.createdAt.toLocaleDateString(),
 	})
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-	return await validateComment({ request })
 }
 
 export default function StudentProfileRoute() {

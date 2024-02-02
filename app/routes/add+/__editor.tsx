@@ -232,7 +232,7 @@ export function StudentForm({
 				{student ? <input type="hidden" name="id" value={student.id} /> : null}
 				<div className="flex flex-col gap-1">
 					<div className="flex justify-center">
-						<ImageChooser config={fields.image} />
+						<ImageChooser meta={fields.image} />
 					</div>
 					<Field
 						labelProps={{ children: 'Name' }}
@@ -345,7 +345,7 @@ export function TeacherForm({
 		},
 	})
 
-	const instrumetsList = fields.instruments.getFieldList()
+	const instrumentsList = fields.instruments.getFieldList()
 
 	return (
 		<div className="container mb-48 mt-5 flex flex-col items-center justify-center gap-6">
@@ -376,10 +376,10 @@ export function TeacherForm({
 						errors={fields.bio.errors}
 					/>
 					<ul className="flex flex-col gap-4">
-						{teacherInstruments.map((instrument, index) => {
+						{instrumentsList.map((instrument, index) => {
 							return (
 								<li
-									key={instrument}
+									key={instrument.key}
 									className="relative border-b-2 border-muted-foreground"
 								>
 									<button
@@ -432,19 +432,14 @@ export function TeacherForm({
 	)
 }
 
-function ImageChooser({ config }: { config: FieldConfig<Image> }) {
-	const ref = useRef<HTMLFieldSetElement>(null)
-	const fields = useFieldset(ref, config)
-	const existingImage = Boolean(fields.id.defaultValue)
+function ImageChooser({ meta }: { meta: FieldMetadata<Image> }) {
+	const fields = meta.getFieldset()
+	const existingImage = Boolean(fields.id.initialValue)
 	const [previewImage, setPreviewImage] = useState<string | null>(
-		fields.id.defaultValue ? getNoteImgSrc(fields.id.defaultValue) : null,
+		fields.id.initialValue ? getNoteImgSrc(fields.id.initialValue) : null,
 	)
 	return (
-		<fieldset
-			ref={ref}
-			aria-invalid={Boolean(config.errors?.length) || undefined}
-			aria-describedby={config.errors?.length ? config.errorId : undefined}
-		>
+		<fieldset {...getFieldsetProps(meta)}>
 			<div>
 				<div className="flex h-32 w-32">
 					<Label
@@ -480,7 +475,7 @@ function ImageChooser({ config }: { config: FieldConfig<Image> }) {
 						)}
 						{existingImage ? (
 							<input
-								{...conform.input(fields.id, {
+								{...getInputProps(fields.id, {
 									type: 'hidden',
 									ariaAttributes: true,
 								})}
@@ -503,7 +498,7 @@ function ImageChooser({ config }: { config: FieldConfig<Image> }) {
 								}
 							}}
 							accept="image/*"
-							{...conform.input(fields.file, {
+							{...getInputProps(fields.file, {
 								type: 'file',
 								ariaAttributes: true,
 							})}
@@ -515,7 +510,7 @@ function ImageChooser({ config }: { config: FieldConfig<Image> }) {
 				</div>
 			</div>
 			<div className="min-h-[32px] px-4 pb-3 pt-1">
-				<ErrorList id={config.errorId} errors={config.errors} />
+				<ErrorList id={meta.errorId} errors={meta.errors} />
 			</div>
 		</fieldset>
 	)
